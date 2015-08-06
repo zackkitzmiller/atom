@@ -1,6 +1,5 @@
 ipc = require 'ipc'
 path = require 'path'
-Q = require 'q'
 _ = require 'underscore-plus'
 Delegator = require 'delegato'
 {deprecate, logDeprecationWarnings} = require 'grim'

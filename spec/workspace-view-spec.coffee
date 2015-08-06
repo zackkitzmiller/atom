@@ -1,5 +1,4 @@
 {$, $$, View} = require '../src/space-pen-extensions'
-Q = require 'q'
 path = require 'path'
 temp = require 'temp'
 TextEditorView = require '../src/text-editor-view'
