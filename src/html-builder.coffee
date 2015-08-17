@@ -12,25 +12,24 @@ class HtmlBuilder
   constructor: ->
     @buffer = ""
     @openTags = []
+    @tagsToReopen = []
 
   openTag: (tag) ->
     tag = Tag.fromObject(tag)
     @openTags.push(tag)
-    @buffer += "<#{tag.name}>"
+    @put("<#{tag.name}>")
     tag
 
   closeTag: (tag) ->
-    tagsToReopen = []
     while openTag = @openTags.pop()
-      @buffer += "</#{openTag.name}>"
+      @put("</#{openTag.name}>", false)
       break if openTag is tag
+      @tagsToReopen.push(openTag)
 
-      tagsToReopen.push(openTag)
+  put: (char, reopenTags = true) ->
+    if reopenTags
+      @openTag(tagToReopen) while tagToReopen = @tagsToReopen.pop()
 
-    while tagToReopen = tagsToReopen.pop()
-      @openTag(tagToReopen)
-
-  putChar: (char) ->
     @buffer += char
 
   toString: ->

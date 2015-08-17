@@ -8,8 +8,8 @@ describe "HtmlBuilder", ->
 
   it "works with flat structures", ->
     tag1 = htmlBuilder.openTag("span")
-    htmlBuilder.putChar("h")
-    htmlBuilder.putChar("i")
+    htmlBuilder.put("h")
+    htmlBuilder.put("i")
     htmlBuilder.closeTag(tag1)
 
     expect(htmlBuilder.toString()).toEqual("<span>hi</span>")
@@ -17,8 +17,8 @@ describe "HtmlBuilder", ->
   it "works with nested structures", ->
     tag1 = htmlBuilder.openTag("div")
     tag2 = htmlBuilder.openTag("span")
-    htmlBuilder.putChar("h")
-    htmlBuilder.putChar("i")
+    htmlBuilder.put("h")
+    htmlBuilder.put("i")
     htmlBuilder.closeTag(tag2)
     htmlBuilder.closeTag(tag1)
 
@@ -27,10 +27,10 @@ describe "HtmlBuilder", ->
   it "automatically reopens tags that cross many DOM elements", ->
     tag1 = htmlBuilder.openTag("div")
     tag2 = htmlBuilder.openTag("span")
-    htmlBuilder.putChar("h")
-    htmlBuilder.putChar("e")
+    htmlBuilder.put("h")
+    htmlBuilder.put("e")
     htmlBuilder.closeTag(tag1)
-    htmlBuilder.putChar("y")
+    htmlBuilder.put("y")
     htmlBuilder.closeTag(tag2)
 
     expect(htmlBuilder.toString()).toEqual("<div><span>he</span></div><span>y</span>")
@@ -49,13 +49,13 @@ describe "HtmlBuilder", ->
   # ==============
   #
   # scopeTag = htmlBuilder.openTag("span", classList: ["scope-a"])
-  # htmlBuilder.putChar("h")
-  # htmlBuilder.putChar("e")
+  # htmlBuilder.put("h")
+  # htmlBuilder.put("e")
   # selectionTag = htmlBuilder.openTag("span", classList: ["selection"])
   # htmlBuilder.closeTag(scopeTag)
-  # htmlBuilder.putChar("l")
-  # htmlBuilder.putChar("l")
-  # htmlBuilder.putChar("o")
+  # htmlBuilder.put("l")
+  # htmlBuilder.put("l")
+  # htmlBuilder.put("o")
   # htmlBuilder.closeTag(selectionTag)
   # htmlBuilder.toString()
 
