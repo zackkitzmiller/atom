@@ -1,13 +1,15 @@
 class Tag
-  @fromObject: (obj) ->
-    if typeof obj is "string"
-      new Tag(obj)
-    else
-      obj
+  constructor: (name) ->
+    return new Tag(arguments...) unless this instanceof Tag
 
-  constructor: (@name) ->
+    @name = name
 
-module.exports =
+  getOpeningString: ->
+    "<#{@name}>"
+
+  getClosingString: ->
+    "</#{@name}>"
+
 class HtmlBuilder
   constructor: ->
     @buffer = ""
@@ -20,14 +22,13 @@ class HtmlBuilder
     @tagsToReopen.length = 0
 
   openTag: (tag) ->
-    tag = Tag.fromObject(tag)
     @openTags.push(tag)
-    @put("<#{tag.name}>")
+    @put(tag.getOpeningString())
     tag
 
   closeTag: (tag) ->
     while openTag = @openTags.pop()
-      @put("</#{openTag.name}>", false)
+      @put(openTag.getClosingString(), false)
       break if openTag is tag
       @tagsToReopen.push(openTag)
 
@@ -38,6 +39,6 @@ class HtmlBuilder
     @buffer += char
 
   toString: ->
-    throw new Error("Some tags were left open!") if @openTags.length isnt 0
-
     @buffer
+
+module.exports = {HtmlBuilder, Tag}
