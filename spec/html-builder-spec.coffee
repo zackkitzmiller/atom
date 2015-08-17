@@ -42,6 +42,16 @@ describe "HtmlBuilder", ->
 
     expect(-> htmlBuilder.toString()).toThrow()
 
+  it "clears everything after reset", ->
+    tag = htmlBuilder.openTag("div")
+    htmlBuilder.put("hello")
+    htmlBuilder.closeTag(tag)
+
+    htmlBuilder.reset()
+    htmlBuilder.put("hello")
+
+    expect(htmlBuilder.toString()).toEqual("hello")
+
   # Imperative API to actually work with strings, used by a
   # Declarative API to express what's in the current line
 

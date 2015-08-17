@@ -14,6 +14,11 @@ class HtmlBuilder
     @openTags = []
     @tagsToReopen = []
 
+  reset: ->
+    @buffer = ""
+    @openTags.length = 0
+    @tagsToReopen.length = 0
+
   openTag: (tag) ->
     tag = Tag.fromObject(tag)
     @openTags.push(tag)
