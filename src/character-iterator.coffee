@@ -69,15 +69,32 @@ class CharacterIterator
   beginsNewToken: ->
     @isNewToken
 
+  isInsideLeadingWhitespace: ->
+    @lineCharIndex < @lineState.firstNonWhitespaceIndex
+
+  isInsideTrailingWhitespace: ->
+    @lineCharIndex + @currentCharLength > @lineState.firstTrailingWhitespaceIndex
+
+  isAtEndOfToken: ->
+    @tokenTextIndex + @currentCharLength is @tokenText.length
+
+  isAtBeginningOfToken: ->
+    @tokenTextIndex is 0
+
   beginsLeadingWhitespace: ->
-    @lineCharIndex < @lineState.firstNonWhitespaceIndex and @tokenTextIndex is 0
+    @isInsideLeadingWhitespace() and @isAtBeginningOfToken()
 
   endsLeadingWhitespace: ->
-    @lineCharIndex + @currentCharLength is @lineState.firstNonWhitespaceIndex or
-    (@tokenTextIndex + @currentCharLength is @tokenText.length and @lineCharIndex + @currentCharLength < @lineState.firstNonWhitespaceIndex)
+    tokenLeadingWhitespaceEndIndex =
+      Math.min(@tokenEnd, @lineState.firstNonWhitespaceIndex)
+
+    @lineCharIndex + @currentCharLength is tokenLeadingWhitespaceEndIndex
 
   beginsTrailingWhitespace: ->
-    @lineCharIndex is @lineState.firstTrailingWhitespaceIndex
+    tokenTrailingWhitespaceStartIndex =
+      Math.max(0, @lineState.firstTrailingWhitespaceIndex - @tokenStart)
+
+    @tokenTextIndex is tokenTrailingWhitespaceStartIndex
 
   endsTrailingWhitespace: ->
-    @lineCharIndex + @currentCharLength is @lineState.text.length
+    @isInsideTrailingWhitespace() and @isAtEndOfToken()

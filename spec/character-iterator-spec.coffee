@@ -100,21 +100,9 @@ fdescribe "CharacterIterator", ->
     expect(iterator.getChar()).toBe("y")
 
   it "recognizes trailing whitespaces", ->
-    editor.setText("hey    ")
+    editor.setText("      ")
     iterator.reset(editor.tokenizedLineForScreenRow(0))
 
-    # Leading Text
-    expect(iterator.next()).toBe(true)
-    expect(iterator.beginsTrailingWhitespace()).toBe(false)
-    expect(iterator.endsTrailingWhitespace()).toBe(false)
-    expect(iterator.next()).toBe(true)
-    expect(iterator.beginsTrailingWhitespace()).toBe(false)
-    expect(iterator.endsTrailingWhitespace()).toBe(false)
-    expect(iterator.next()).toBe(true)
-    expect(iterator.beginsTrailingWhitespace()).toBe(false)
-    expect(iterator.endsTrailingWhitespace()).toBe(false)
-
-    # Trailing Whitespace
     expect(iterator.next()).toBe(true)
     expect(iterator.beginsTrailingWhitespace()).toBe(true)
     expect(iterator.endsLeadingWhitespace()).toBe(false)
@@ -122,11 +110,21 @@ fdescribe "CharacterIterator", ->
 
     expect(iterator.next()).toBe(true)
     expect(iterator.beginsTrailingWhitespace()).toBe(false)
+    expect(iterator.endsTrailingWhitespace()).toBe(true)
+    expect(iterator.getChar()).toBe(" ")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsTrailingWhitespace()).toBe(true)
     expect(iterator.endsTrailingWhitespace()).toBe(false)
     expect(iterator.getChar()).toBe(" ")
 
     expect(iterator.next()).toBe(true)
     expect(iterator.beginsTrailingWhitespace()).toBe(false)
+    expect(iterator.endsTrailingWhitespace()).toBe(true)
+    expect(iterator.getChar()).toBe(" ")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsTrailingWhitespace()).toBe(true)
     expect(iterator.endsTrailingWhitespace()).toBe(false)
     expect(iterator.getChar()).toBe(" ")
 
@@ -136,3 +134,35 @@ fdescribe "CharacterIterator", ->
     expect(iterator.getChar()).toBe(" ")
 
     expect(iterator.next()).toBe(false)
+
+    editor.setText("  hi  ")
+    iterator.reset(editor.tokenizedLineForScreenRow(0))
+
+    # Leading text
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsTrailingWhitespace()).toBe(false)
+    expect(iterator.endsTrailingWhitespace()).toBe(false)
+    expect(iterator.getChar()).toBe(" ")
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsTrailingWhitespace()).toBe(false)
+    expect(iterator.endsTrailingWhitespace()).toBe(false)
+    expect(iterator.getChar()).toBe(" ")
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsTrailingWhitespace()).toBe(false)
+    expect(iterator.endsTrailingWhitespace()).toBe(false)
+    expect(iterator.getChar()).toBe("h")
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsTrailingWhitespace()).toBe(false)
+    expect(iterator.endsTrailingWhitespace()).toBe(false)
+    expect(iterator.getChar()).toBe("i")
+
+    # Trailing whitespaces
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsTrailingWhitespace()).toBe(true)
+    expect(iterator.endsTrailingWhitespace()).toBe(false)
+    expect(iterator.getChar()).toBe(" ")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsTrailingWhitespace()).toBe(false)
+    expect(iterator.endsTrailingWhitespace()).toBe(true)
+    expect(iterator.getChar()).toBe(" ")
