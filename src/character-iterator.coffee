@@ -52,7 +52,7 @@ class CharacterIterator
     true
 
   getChar: ->
-    @currentChar
+    @currentChar or ""
 
   getCharIndex: ->
     @lineCharIndex
@@ -73,12 +73,11 @@ class CharacterIterator
     @lineCharIndex < @lineState.firstNonWhitespaceIndex and @tokenTextIndex is 0
 
   endsLeadingWhitespace: ->
-    @lineCharIndex < @lineState.firstNonWhitespaceIndex and
-    @tokenTextIndex + @currentCharLength is @tokenText.length
+    @lineCharIndex + @currentCharLength is @lineState.firstNonWhitespaceIndex or
+    (@tokenTextIndex + @currentCharLength is @tokenText.length and @lineCharIndex + @currentCharLength < @lineState.firstNonWhitespaceIndex)
 
   beginsTrailingWhitespace: ->
     @lineCharIndex is @lineState.firstTrailingWhitespaceIndex
 
   endsTrailingWhitespace: ->
-    @lineCharIndex > @lineState.firstTrailingWhitespaceIndex and
-    @tokenTextIndex + @currentCharLength is @tokenText.length
+    @lineCharIndex + @currentCharLength is @lineState.text.length

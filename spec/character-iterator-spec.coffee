@@ -66,33 +66,38 @@ fdescribe "CharacterIterator", ->
     expect(iterator.next()).toBe(false)
 
   it "recognizes leading whitespaces (soft tabs)", ->
-    iterator.reset(editor.tokenizedLineForScreenRow(3))
+    editor.setText("   hey")
+    iterator.reset(editor.tokenizedLineForScreenRow(0))
 
-    # First leading-whitespace
     expect(iterator.next()).toBe(true)
     expect(iterator.beginsLeadingWhitespace()).toBe(true)
     expect(iterator.endsLeadingWhitespace()).toBe(false)
     expect(iterator.getChar()).toBe(" ")
+
     expect(iterator.next()).toBe(true)
     expect(iterator.beginsLeadingWhitespace()).toBe(false)
     expect(iterator.endsLeadingWhitespace()).toBe(true)
     expect(iterator.getChar()).toBe(" ")
 
-    # Second leading-whitespace
     expect(iterator.next()).toBe(true)
     expect(iterator.beginsLeadingWhitespace()).toBe(true)
-    expect(iterator.endsLeadingWhitespace()).toBe(false)
-    expect(iterator.getChar()).toBe(" ")
-    expect(iterator.next()).toBe(true)
-    expect(iterator.beginsLeadingWhitespace()).toBe(false)
     expect(iterator.endsLeadingWhitespace()).toBe(true)
     expect(iterator.getChar()).toBe(" ")
 
-    while iterator.next()
-      expect(iterator.beginsLeadingWhitespace()).toBe(false)
-      expect(iterator.endsLeadingWhitespace()).toBe(false)
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsLeadingWhitespace()).toBe(false)
+    expect(iterator.endsLeadingWhitespace()).toBe(false)
+    expect(iterator.getChar()).toBe("h")
 
-    expect(iterator.next()).toBe(false)
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsLeadingWhitespace()).toBe(false)
+    expect(iterator.endsLeadingWhitespace()).toBe(false)
+    expect(iterator.getChar()).toBe("e")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsLeadingWhitespace()).toBe(false)
+    expect(iterator.endsLeadingWhitespace()).toBe(false)
+    expect(iterator.getChar()).toBe("y")
 
   it "recognizes trailing whitespaces", ->
     editor.setText("hey    ")

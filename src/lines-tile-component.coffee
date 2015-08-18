@@ -1,7 +1,5 @@
 # FIXME: I have currently removed the possibility to split a token when it reaches the `MaxTokenLength`. This comment serves as a reminder to readd it when polishing the code.
 
-# FIXME: `beginsTrailingWhitespace` and `beginsLeadingWhitespace` do not work at times. It's okay for now, but let's remember to fix it.
-
 _ = require 'underscore-plus'
 
 HighlightsComponent = require './highlights-component'
@@ -175,19 +173,25 @@ class LinesTileComponent
     @tokenIterator.reset(lineState)
 
     while @characterIterator.next()
-      hasIndentGuide = false
-      hasInvisibleCharacters = false
-
       if @characterIterator.beginsNewToken()
+        tokenStart = @characterIterator.getTokenStart()
+        tokenEnd = @characterIterator.getTokenEnd()
+
         for scope in @characterIterator.getScopeEnds()
           innerHTML += "</span>"
 
         for scope in @characterIterator.getScopeStarts()
           innerHTML += "<span class=\"#{scope.replace(/\.+/g, ' ')}\">"
 
-        hasLeadingWhitespace = @characterIterator.getTokenStart() < firstNonWhitespaceIndex
+        if hasLeadingWhitespace = tokenStart < firstNonWhitespaceIndex
+          tokenFirstNonWhitespaceIndex = firstNonWhitespaceIndex - tokenStart
+        else
+          tokenFirstNonWhitespaceIndex = null
 
-        hasTrailingWhitespace = @characterIterator.getTokenEnd() > firstTrailingWhitespaceIndex
+        if hasTrailingWhitespace = tokenEnd > firstTrailingWhitespaceIndex
+          tokenFirstTrailingWhitespaceIndex = Math.max(0, firstTrailingWhitespaceIndex - tokenStart)
+        else
+          tokenFirstTrailingWhitespaceIndex = null
 
         hasIndentGuide =
           @newState.indentGuidesVisible and
@@ -217,8 +221,10 @@ class LinesTileComponent
           classes += ' indent-guide' if hasIndentGuide
           classes += ' invisible-character' if hasInvisibleCharacters
         else
+          tokenIsOnlyWhitespace = tokenFirstTrailingWhitespaceIndex is 0
+
           classes = 'trailing-whitespace'
-          classes += ' indent-guide' if hasIndentGuide
+          classes += ' indent-guide' if hasIndentGuide and not tokenFirstNonWhitespaceIndex? and tokenIsOnlyWhitespace
           classes += ' invisible-character' if hasInvisibleCharacters
 
         innerHTML += "<span class=\"#{classes}\">"
