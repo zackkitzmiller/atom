@@ -1,6 +1,6 @@
 CharacterIterator = require "../src/character-iterator"
 
-fdescribe "CharacterIterator", ->
+describe "CharacterIterator", ->
   [editor, iterator] = []
 
   beforeEach ->
@@ -20,15 +20,15 @@ fdescribe "CharacterIterator", ->
     iterator.reset(editor.tokenizedLineForScreenRow(3))
 
     expect(iterator.next()).toBe(true)
-    expect(iterator.beginsNewToken()).toBe(true)
+    expect(iterator.isAtBeginningOfToken()).toBe(true)
     expect(iterator.next()).toBe(true)
-    expect(iterator.beginsNewToken()).toBe(false)
+    expect(iterator.isAtBeginningOfToken()).toBe(false)
     expect(iterator.next()).toBe(true)
-    expect(iterator.beginsNewToken()).toBe(true)
+    expect(iterator.isAtBeginningOfToken()).toBe(true)
     expect(iterator.next()).toBe(true)
-    expect(iterator.beginsNewToken()).toBe(false)
+    expect(iterator.isAtBeginningOfToken()).toBe(false)
     expect(iterator.next()).toBe(true)
-    expect(iterator.beginsNewToken()).toBe(true)
+    expect(iterator.isAtBeginningOfToken()).toBe(true)
 
   it "recognizes leading whitespaces (hard tabs)", ->
     editor.setText("\t\thello")

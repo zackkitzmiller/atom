@@ -29,14 +29,12 @@ class CharacterIterator
     @tokenEnd
 
   next: ->
-    @isNewToken = false
     @tokenTextIndex += @currentCharLength
     @lineCharIndex  += @currentCharLength
 
     if @tokenTextIndex >= @tokenText.length
       return false unless @tokenIterator.next()
 
-      @isNewToken = true
       @tokenText = @tokenIterator.getText()
       @tokenStart = @tokenIterator.getScreenStart()
       @tokenEnd = @tokenIterator.getScreenEnd()
@@ -65,9 +63,6 @@ class CharacterIterator
 
   isHardTab: ->
     @tokenIterator.isHardTab()
-
-  beginsNewToken: ->
-    @isNewToken
 
   isInsideLeadingWhitespace: ->
     @lineCharIndex < @lineState.firstNonWhitespaceIndex

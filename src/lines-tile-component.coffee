@@ -173,7 +173,7 @@ class LinesTileComponent
     @tokenIterator.reset(lineState)
 
     while @characterIterator.next()
-      if @characterIterator.beginsNewToken()
+      if @characterIterator.isAtBeginningOfToken()
         tokenStart = @characterIterator.getTokenStart()
         tokenEnd = @characterIterator.getTokenEnd()
 
@@ -242,59 +242,6 @@ class LinesTileComponent
 
     innerHTML += @buildEndOfLineHTML(id)
     innerHTML
-
-  buildTokenHTML: (tokenText, isHardTab, firstNonWhitespaceIndex, firstTrailingWhitespaceIndex, hasIndentGuide, hasInvisibleCharacters) ->
-    if isHardTab
-      classes = 'hard-tab'
-      classes += ' leading-whitespace' if firstNonWhitespaceIndex?
-      classes += ' trailing-whitespace' if firstTrailingWhitespaceIndex?
-      classes += ' indent-guide' if hasIndentGuide
-      classes += ' invisible-character' if hasInvisibleCharacters
-      return "<span class='#{classes}'>#{@escapeTokenText(tokenText)}</span>"
-    else
-      startIndex = 0
-      endIndex = tokenText.length
-
-      leadingHtml = ''
-      trailingHtml = ''
-
-      if firstNonWhitespaceIndex?
-        leadingWhitespace = tokenText.substring(0, firstNonWhitespaceIndex)
-
-        classes = 'leading-whitespace'
-        classes += ' indent-guide' if hasIndentGuide
-        classes += ' invisible-character' if hasInvisibleCharacters
-
-        leadingHtml = "<span class='#{classes}'>#{leadingWhitespace}</span>"
-        startIndex = firstNonWhitespaceIndex
-
-      if firstTrailingWhitespaceIndex?
-        tokenIsOnlyWhitespace = firstTrailingWhitespaceIndex is 0
-        trailingWhitespace = tokenText.substring(firstTrailingWhitespaceIndex)
-
-        classes = 'trailing-whitespace'
-        classes += ' indent-guide' if hasIndentGuide and not firstNonWhitespaceIndex? and tokenIsOnlyWhitespace
-        classes += ' invisible-character' if hasInvisibleCharacters
-
-        trailingHtml = "<span class='#{classes}'>#{trailingWhitespace}</span>"
-
-        endIndex = firstTrailingWhitespaceIndex
-
-      html = leadingHtml
-      if tokenText.length > MaxTokenLength
-        while startIndex < endIndex
-          html += "<span>" + @escapeTokenText(tokenText, startIndex, startIndex + MaxTokenLength) + "</span>"
-          startIndex += MaxTokenLength
-      else
-        html += @escapeTokenText(tokenText, startIndex, endIndex)
-
-      html += trailingHtml
-    html
-
-  escapeTokenText: (tokenText, startIndex, endIndex) ->
-    if startIndex? and endIndex? and startIndex > 0 or endIndex < tokenText.length
-      tokenText = tokenText.slice(startIndex, endIndex)
-    tokenText.replace(TokenTextEscapeRegex, @escapeTokenTextReplace)
 
   escapeTokenTextReplace: (match) ->
     switch match
