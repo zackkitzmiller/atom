@@ -1,7 +1,12 @@
+# FIXME: I have currently removed the possibility to split a token when it reaches the `MaxTokenLength`. This comment serves as a reminder to readd it when polishing the code.
+
+# FIXME: `beginsTrailingWhitespace` and `beginsLeadingWhitespace` do not work at times. It's okay for now, but let's remember to fix it.
+
 _ = require 'underscore-plus'
 
 HighlightsComponent = require './highlights-component'
 TokenIterator = require './token-iterator'
+CharacterIterator = require './character-iterator'
 AcceptFilter = {acceptNode: -> NodeFilter.FILTER_ACCEPT}
 WrapperDiv = document.createElement('div')
 TokenTextEscapeRegex = /[&"'<>]/g
@@ -16,6 +21,7 @@ module.exports =
 class LinesTileComponent
   constructor: ({@presenter, @id}) ->
     @tokenIterator = new TokenIterator
+    @characterIterator = new CharacterIterator
     @measuredLines = new Set
     @lineNodesByLineId = {}
     @screenRowsByLineId = {}
@@ -160,48 +166,72 @@ class LinesTileComponent
 
   buildLineInnerHTML: (id) ->
     lineState = @newTileState.lines[id]
+
     {firstNonWhitespaceIndex, firstTrailingWhitespaceIndex, invisibles} = lineState
     lineIsWhitespaceOnly = firstTrailingWhitespaceIndex is 0
 
     innerHTML = ""
+    @characterIterator.reset(lineState)
     @tokenIterator.reset(lineState)
 
-    while @tokenIterator.next()
-      for scope in @tokenIterator.getScopeEnds()
+    while @characterIterator.next()
+      hasIndentGuide = false
+      hasInvisibleCharacters = false
+
+      if @characterIterator.beginsNewToken()
+        for scope in @characterIterator.getScopeEnds()
+          innerHTML += "</span>"
+
+        for scope in @characterIterator.getScopeStarts()
+          innerHTML += "<span class=\"#{scope.replace(/\.+/g, ' ')}\">"
+
+        hasLeadingWhitespace = @characterIterator.getTokenStart() < firstNonWhitespaceIndex
+
+        hasTrailingWhitespace = @characterIterator.getTokenEnd() > firstTrailingWhitespaceIndex
+
+        hasIndentGuide =
+          @newState.indentGuidesVisible and
+            (hasLeadingWhitespace or lineIsWhitespaceOnly)
+
+        hasInvisibleCharacters =
+          (invisibles?.tab and @characterIterator.isHardTab()) or
+            (invisibles?.space and (hasLeadingWhitespace or hasTrailingWhitespace))
+
+      if @characterIterator.beginsLeadingWhitespace()
+        if @characterIterator.isHardTab()
+          classes = 'hard-tab'
+          classes += ' leading-whitespace'
+          classes += ' indent-guide' if hasIndentGuide
+          classes += ' invisible-character' if hasInvisibleCharacters
+        else
+          classes = 'leading-whitespace'
+          classes += ' indent-guide' if hasIndentGuide
+          classes += ' invisible-character' if hasInvisibleCharacters
+
+        innerHTML += "<span class=\"#{classes}\">"
+
+      if @characterIterator.beginsTrailingWhitespace()
+        if @characterIterator.isHardTab()
+          classes = 'hard-tab'
+          classes += ' trailing-whitespace'
+          classes += ' indent-guide' if hasIndentGuide
+          classes += ' invisible-character' if hasInvisibleCharacters
+        else
+          classes = 'trailing-whitespace'
+          classes += ' indent-guide' if hasIndentGuide
+          classes += ' invisible-character' if hasInvisibleCharacters
+
+        innerHTML += "<span class=\"#{classes}\">"
+
+      innerHTML += @escapeTokenTextReplace(@characterIterator.getChar())
+
+      if @characterIterator.endsLeadingWhitespace() or @characterIterator.endsTrailingWhitespace()
         innerHTML += "</span>"
 
-      for scope in @tokenIterator.getScopeStarts()
-        innerHTML += "<span class=\"#{scope.replace(/\.+/g, ' ')}\">"
-
-      tokenStart = @tokenIterator.getScreenStart()
-      tokenEnd = @tokenIterator.getScreenEnd()
-      tokenText = @tokenIterator.getText()
-      isHardTab = @tokenIterator.isHardTab()
-
-      if hasLeadingWhitespace = tokenStart < firstNonWhitespaceIndex
-        tokenFirstNonWhitespaceIndex = firstNonWhitespaceIndex - tokenStart
-      else
-        tokenFirstNonWhitespaceIndex = null
-
-      if hasTrailingWhitespace = tokenEnd > firstTrailingWhitespaceIndex
-        tokenFirstTrailingWhitespaceIndex = Math.max(0, firstTrailingWhitespaceIndex - tokenStart)
-      else
-        tokenFirstTrailingWhitespaceIndex = null
-
-      hasIndentGuide =
-        @newState.indentGuidesVisible and
-          (hasLeadingWhitespace or lineIsWhitespaceOnly)
-
-      hasInvisibleCharacters =
-        (invisibles?.tab and isHardTab) or
-          (invisibles?.space and (hasLeadingWhitespace or hasTrailingWhitespace))
-
-      innerHTML += @buildTokenHTML(tokenText, isHardTab, tokenFirstNonWhitespaceIndex, tokenFirstTrailingWhitespaceIndex, hasIndentGuide, hasInvisibleCharacters)
-
-    for scope in @tokenIterator.getScopeEnds()
+    for scope in @characterIterator.getScopeEnds()
       innerHTML += "</span>"
 
-    for scope in @tokenIterator.getScopes()
+    for scope in @characterIterator.getScopes()
       innerHTML += "</span>"
 
     innerHTML += @buildEndOfLineHTML(id)

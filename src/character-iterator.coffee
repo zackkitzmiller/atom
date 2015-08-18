@@ -22,6 +22,12 @@ class CharacterIterator
   getScopeEnds: ->
     @tokenIterator.getScopeEnds()
 
+  getTokenStart: ->
+    @tokenStart
+
+  getTokenEnd: ->
+    @tokenEnd
+
   next: ->
     @isNewToken = false
     @tokenTextIndex += @currentCharLength
