@@ -1,11 +1,15 @@
 class Tag
-  constructor: (name) ->
+  constructor: (name, className) ->
     return new Tag(arguments...) unless this instanceof Tag
 
     @name = name
+    @className = className
 
   getOpeningString: ->
-    "<#{@name}>"
+    html = "<#{@name}"
+    html += " class='#{@className}'" if @className?
+    html += ">"
+    html
 
   getClosingString: ->
     "</#{@name}>"
