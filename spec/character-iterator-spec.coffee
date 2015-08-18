@@ -13,12 +13,14 @@ class CharacterIterator
     @tokenText = ""
 
   next: ->
+    @isNewToken = false
     @tokenTextIndex += @currentCharLength
-    @lineCharIndex += @currentCharLength
+    @lineCharIndex  += @currentCharLength
 
     if @tokenTextIndex >= @tokenText.length
       return false unless @tokenIterator.next()
 
+      @isNewToken = true
       @tokenText = @tokenIterator.getText()
       @tokenStart = @tokenIterator.getScreenStart()
       @tokenEnd = @tokenIterator.getScreenEnd()
@@ -35,6 +37,18 @@ class CharacterIterator
 
   getChar: ->
     @currentChar
+
+  getCharIndex: ->
+    @lineCharIndex
+
+  getTokenText: ->
+    @tokenText
+
+  getCharIndexWithinToken: ->
+    @tokenTextIndex
+
+  beginsNewToken: ->
+    @isNewToken
 
   beginsLeadingWhitespace: ->
     @lineCharIndex < @lineState.firstNonWhitespaceIndex and @tokenTextIndex is 0
@@ -62,6 +76,20 @@ fdescribe "CharacterIterator", ->
 
     runs ->
       iterator = new CharacterIterator
+
+  it "recognizes new tokens while iterating over characters", ->
+    iterator.reset(editor.tokenizedLineForScreenRow(3))
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsNewToken()).toBe(true)
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsNewToken()).toBe(false)
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsNewToken()).toBe(true)
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsNewToken()).toBe(false)
+    expect(iterator.next()).toBe(true)
+    expect(iterator.beginsNewToken()).toBe(true)
 
   it "recognizes leading whitespaces", ->
     iterator.reset(editor.tokenizedLineForScreenRow(3))
