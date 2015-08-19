@@ -19,6 +19,7 @@ cloneObject = (object) ->
 module.exports =
 class LinesTileComponent
   constructor: ({@presenter, @id}) ->
+    @htmlBuilder = new HtmlBuilder
     @tokenIterator = new TokenIterator
     @characterIterator = new CharacterIterator
     @measuredLines = new Set
@@ -169,8 +170,7 @@ class LinesTileComponent
     {firstNonWhitespaceIndex, firstTrailingWhitespaceIndex, invisibles} = lineState
     lineIsWhitespaceOnly = firstTrailingWhitespaceIndex is 0
 
-    innerHTML = ""
-    htmlBuilder = new HtmlBuilder
+    @htmlBuilder.reset()
     @characterIterator.reset(lineState)
     @tokenIterator.reset(lineState)
     scopeTags = []
@@ -181,11 +181,11 @@ class LinesTileComponent
         tokenEnd = @characterIterator.getTokenEnd()
 
         for scope in @characterIterator.getScopeEnds()
-          htmlBuilder.closeTag(scopeTags.pop())
+          @htmlBuilder.closeTag(scopeTags.pop())
 
         for scope in @characterIterator.getScopeStarts()
           scopeTag = Tag("span", scope.replace(/\.+/g, ' '))
-          htmlBuilder.openTag(scopeTag)
+          @htmlBuilder.openTag(scopeTag)
           scopeTags.push(scopeTag)
 
         if hasLeadingWhitespace = tokenStart < firstNonWhitespaceIndex
@@ -218,7 +218,7 @@ class LinesTileComponent
           classes += ' invisible-character' if hasInvisibleCharacters
 
         leadingWhitespaceTag = Tag("span", classes)
-        htmlBuilder.openTag(leadingWhitespaceTag)
+        @htmlBuilder.openTag(leadingWhitespaceTag)
 
       if @characterIterator.beginsTrailingWhitespace()
         if @characterIterator.isHardTab()
@@ -234,24 +234,23 @@ class LinesTileComponent
           classes += ' invisible-character' if hasInvisibleCharacters
 
         trailingWhitespaceTag = Tag("span", classes)
-        htmlBuilder.openTag(trailingWhitespaceTag)
+        @htmlBuilder.openTag(trailingWhitespaceTag)
 
-      htmlBuilder.put(@characterIterator.getChar())
+      @htmlBuilder.put(@characterIterator.getChar())
 
       if @characterIterator.endsLeadingWhitespace()
-        htmlBuilder.closeTag(leadingWhitespaceTag)
+        @htmlBuilder.closeTag(leadingWhitespaceTag)
 
       if @characterIterator.endsTrailingWhitespace()
-        htmlBuilder.closeTag(trailingWhitespaceTag)
+        @htmlBuilder.closeTag(trailingWhitespaceTag)
 
     for scope in @characterIterator.getScopeEnds()
-      htmlBuilder.closeTag(scopeTags.pop())
+      @htmlBuilder.closeTag(scopeTags.pop())
 
     for scope in @characterIterator.getScopes()
-      htmlBuilder.closeTag(scopeTags.pop())
+      @htmlBuilder.closeTag(scopeTags.pop())
 
-    innerHTML += htmlBuilder.toString() + @buildEndOfLineHTML(id)
-    innerHTML
+    @htmlBuilder.toString() + @buildEndOfLineHTML(id)
 
   buildEndOfLineHTML: (id) ->
     {endOfLineInvisibles} = @newTileState.lines[id]
