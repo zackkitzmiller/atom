@@ -5,6 +5,7 @@ _ = require 'underscore-plus'
 HighlightsComponent = require './highlights-component'
 TokenIterator = require './token-iterator'
 CharacterIterator = require './character-iterator'
+{HtmlBuilder, Tag} = require './html-builder'
 AcceptFilter = {acceptNode: -> NodeFilter.FILTER_ACCEPT}
 WrapperDiv = document.createElement('div')
 TokenTextEscapeRegex = /[&"'<>]/g
@@ -169,8 +170,10 @@ class LinesTileComponent
     lineIsWhitespaceOnly = firstTrailingWhitespaceIndex is 0
 
     innerHTML = ""
+    htmlBuilder = new HtmlBuilder
     @characterIterator.reset(lineState)
     @tokenIterator.reset(lineState)
+    scopeTags = []
 
     while @characterIterator.next()
       if @characterIterator.isAtBeginningOfToken()
@@ -178,10 +181,12 @@ class LinesTileComponent
         tokenEnd = @characterIterator.getTokenEnd()
 
         for scope in @characterIterator.getScopeEnds()
-          innerHTML += "</span>"
+          htmlBuilder.closeTag(scopeTags.pop())
 
         for scope in @characterIterator.getScopeStarts()
-          innerHTML += "<span class=\"#{scope.replace(/\.+/g, ' ')}\">"
+          scopeTag = Tag("span", scope.replace(/\.+/g, ' '))
+          htmlBuilder.openTag(scopeTag)
+          scopeTags.push(scopeTag)
 
         if hasLeadingWhitespace = tokenStart < firstNonWhitespaceIndex
           tokenFirstNonWhitespaceIndex = firstNonWhitespaceIndex - tokenStart
@@ -212,7 +217,8 @@ class LinesTileComponent
           classes += ' indent-guide' if hasIndentGuide
           classes += ' invisible-character' if hasInvisibleCharacters
 
-        innerHTML += "<span class=\"#{classes}\">"
+        leadingWhitespaceTag = Tag("span", classes)
+        htmlBuilder.openTag(leadingWhitespaceTag)
 
       if @characterIterator.beginsTrailingWhitespace()
         if @characterIterator.isHardTab()
@@ -227,20 +233,24 @@ class LinesTileComponent
           classes += ' indent-guide' if hasIndentGuide and not tokenFirstNonWhitespaceIndex? and tokenIsOnlyWhitespace
           classes += ' invisible-character' if hasInvisibleCharacters
 
-        innerHTML += "<span class=\"#{classes}\">"
+        trailingWhitespaceTag = Tag("span", classes)
+        htmlBuilder.openTag(trailingWhitespaceTag)
 
-      innerHTML += @escapeTokenTextReplace(@characterIterator.getChar())
+      htmlBuilder.put(@escapeTokenTextReplace(@characterIterator.getChar()))
 
-      if @characterIterator.endsLeadingWhitespace() or @characterIterator.endsTrailingWhitespace()
-        innerHTML += "</span>"
+      if @characterIterator.endsLeadingWhitespace()
+        htmlBuilder.closeTag(leadingWhitespaceTag)
+
+      if @characterIterator.endsTrailingWhitespace()
+        htmlBuilder.closeTag(trailingWhitespaceTag)
 
     for scope in @characterIterator.getScopeEnds()
-      innerHTML += "</span>"
+      htmlBuilder.closeTag(scopeTags.pop())
 
     for scope in @characterIterator.getScopes()
-      innerHTML += "</span>"
+      htmlBuilder.closeTag(scopeTags.pop())
 
-    innerHTML += @buildEndOfLineHTML(id)
+    innerHTML += htmlBuilder.toString() + @buildEndOfLineHTML(id)
     innerHTML
 
   escapeTokenTextReplace: (match) ->

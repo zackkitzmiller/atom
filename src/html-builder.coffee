@@ -32,15 +32,16 @@ class HtmlBuilder
 
   closeTag: (tag) ->
     while openTag = @openTags.pop()
-      @put(openTag.getClosingString(), false)
+      @put(openTag.getClosingString())
       break if openTag is tag
       @tagsToReopen.push(openTag)
 
-  put: (char, reopenTags = true) ->
-    if reopenTags
-      @openTag(tagToReopen) while tagToReopen = @tagsToReopen.pop()
+  reopenTags: ->
+    while tag = @tagsToReopen.pop()
+      @openTag(tag)
 
-    @buffer += char
+  put: (text) ->
+    @buffer += text
 
   toString: ->
     @buffer

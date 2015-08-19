@@ -1,6 +1,6 @@
 {HtmlBuilder, Tag} = require '../src/html-builder'
 
-describe "HtmlBuilder", ->
+fdescribe "HtmlBuilder", ->
   htmlBuilder = null
 
   beforeEach ->
@@ -24,12 +24,13 @@ describe "HtmlBuilder", ->
 
     expect(htmlBuilder.toString()).toEqual("<div><span>hi</span></div>")
 
-  it "automatically reopens tags that cross many DOM elements", ->
+  it "remembers open tags when a tag with a lesser indent level gets closed", ->
     tag1 = htmlBuilder.openTag(Tag("div"))
     tag2 = htmlBuilder.openTag(Tag("span"))
     htmlBuilder.put("h")
     htmlBuilder.put("e")
     htmlBuilder.closeTag(tag1)
+    htmlBuilder.reopenTags()
     htmlBuilder.put("y")
     htmlBuilder.closeTag(tag2)
 
