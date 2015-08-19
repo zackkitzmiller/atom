@@ -8,8 +8,6 @@ EscapeCharacters = {
 
 class Tag
   constructor: (name, className) ->
-    return new Tag(arguments...) unless this instanceof Tag
-
     @name = name
     @className = className
 

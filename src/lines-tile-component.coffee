@@ -184,7 +184,7 @@ class LinesTileComponent
           @htmlBuilder.closeTag(scopeTags.pop())
 
         for scope in @characterIterator.getScopeStarts()
-          scopeTag = Tag("span", scope.replace(/\.+/g, ' '))
+          scopeTag = new Tag("span", scope.replace(/\.+/g, ' '))
           @htmlBuilder.openTag(scopeTag)
           scopeTags.push(scopeTag)
 
@@ -217,7 +217,7 @@ class LinesTileComponent
           classes += ' indent-guide' if hasIndentGuide
           classes += ' invisible-character' if hasInvisibleCharacters
 
-        leadingWhitespaceTag = Tag("span", classes)
+        leadingWhitespaceTag = new Tag("span", classes)
         @htmlBuilder.openTag(leadingWhitespaceTag)
 
       if @characterIterator.beginsTrailingWhitespace()
@@ -233,7 +233,7 @@ class LinesTileComponent
           classes += ' indent-guide' if hasIndentGuide and not tokenFirstNonWhitespaceIndex? and tokenIsOnlyWhitespace
           classes += ' invisible-character' if hasInvisibleCharacters
 
-        trailingWhitespaceTag = Tag("span", classes)
+        trailingWhitespaceTag = new Tag("span", classes)
         @htmlBuilder.openTag(trailingWhitespaceTag)
 
       @htmlBuilder.put(@characterIterator.getChar())
