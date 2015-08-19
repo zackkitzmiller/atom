@@ -236,7 +236,7 @@ class LinesTileComponent
         trailingWhitespaceTag = Tag("span", classes)
         htmlBuilder.openTag(trailingWhitespaceTag)
 
-      htmlBuilder.put(@escapeTokenTextReplace(@characterIterator.getChar()))
+      htmlBuilder.put(@characterIterator.getChar())
 
       if @characterIterator.endsLeadingWhitespace()
         htmlBuilder.closeTag(leadingWhitespaceTag)
@@ -252,15 +252,6 @@ class LinesTileComponent
 
     innerHTML += htmlBuilder.toString() + @buildEndOfLineHTML(id)
     innerHTML
-
-  escapeTokenTextReplace: (match) ->
-    switch match
-      when '&' then '&amp;'
-      when '"' then '&quot;'
-      when "'" then '&#39;'
-      when '<' then '&lt;'
-      when '>' then '&gt;'
-      else match
 
   buildEndOfLineHTML: (id) ->
     {endOfLineInvisibles} = @newTileState.lines[id]

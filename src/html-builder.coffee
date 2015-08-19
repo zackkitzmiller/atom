@@ -1,3 +1,11 @@
+EscapeCharacters = {
+  '&': '&amp;'
+  '"': '&quot;'
+  "'": '&#39;'
+  '<': '&lt;'
+  '>': '&gt;'
+}
+
 class Tag
   constructor: (name, className) ->
     return new Tag(arguments...) unless this instanceof Tag
@@ -27,12 +35,12 @@ class HtmlBuilder
 
   openTag: (tag) ->
     @openTags.push(tag)
-    @put(tag.getOpeningString())
+    @put(tag.getOpeningString(), false)
     tag
 
   closeTag: (tag) ->
     while openTag = @openTags.pop()
-      @put(openTag.getClosingString())
+      @put(openTag.getClosingString(), false)
       break if openTag is tag
       @tagsToReopen.push(openTag)
 
@@ -40,8 +48,12 @@ class HtmlBuilder
     while tag = @tagsToReopen.pop()
       @openTag(tag)
 
-  put: (text) ->
+  put: (text, escape = true) ->
+    text = @escapeText(text) if escape
     @buffer += text
+
+  escapeText: (match) ->
+    EscapeCharacters[match] or match
 
   toString: ->
     @buffer
