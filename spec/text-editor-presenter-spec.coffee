@@ -1064,7 +1064,7 @@ describe "TextEditorPresenter", ->
               expect(lineStateForScreenRow(presenter, 0).decorationClasses).toContain 'a'
               expect(lineStateForScreenRow(presenter, 1).decorationClasses).toContain 'a'
 
-      fffdescribe ".cursorsByScreenRowAndColumn", ->
+      describe ".cursorsByScreenRowAndColumn", ->
         stateForCursor = (presenter, position) ->
           {row, column} = Point.fromObject(position)
           presenter.getState().content.cursorsByScreenRowAndColumn[row]?[column]
@@ -1193,6 +1193,81 @@ describe "TextEditorPresenter", ->
           expectStateUpdate presenter, -> editor.getCursors()[2].destroy()
           expect(shouldRebuildOnlyScreenRows(presenter, [3])).toBe(true)
           expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+        it "updates when ::scrollTop changes", ->
+          editor.setSelectedBufferRanges([
+            [[1, 2], [1, 2]],
+            [[2, 4], [2, 4]],
+            [[3, 4], [3, 5]]
+            [[5, 12], [5, 12]],
+            [[8, 4], [8, 4]]
+          ])
+          presenter = buildPresenter(explicitHeight: 30, scrollTop: 20)
+
+          expectStateUpdate presenter, -> presenter.setScrollTop(5 * 10)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [5, 8]))
+          expect(stateForCursor(presenter, [1, 2])).toBeUndefined()
+          expect(stateForCursor(presenter, [2, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 5])).toBeUndefined()
+          expect(stateForCursor(presenter, [5, 12])).toBeDefined()
+          expect(stateForCursor(presenter, [8, 4])).toBeDefined()
+
+        it "updates when ::scrollTop changes after the model was changed", ->
+          presenter = buildPresenter(explicitHeight: 50, scrollTop: 10 * 8)
+          editor.setCursorBufferPosition([8, 22])
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [8])).toBe(true)
+          expect(stateForCursor(presenter, [8, 22])).toBeDefined()
+
+          expectStateUpdate presenter, ->
+            editor.getBuffer().deleteRow(12)
+            editor.getBuffer().deleteRow(11)
+            editor.getBuffer().deleteRow(10)
+
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+          expect(stateForCursor(presenter, [8, 22])).toBeDefined()
+
+        it "updates when ::explicitHeight changes", ->
+          editor.setSelectedBufferRanges([
+            [[1, 2], [1, 2]],
+            [[2, 4], [2, 4]],
+            [[3, 4], [3, 5]]
+            [[5, 12], [5, 12]],
+            [[8, 4], [8, 4]]
+          ])
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20)
+
+          expectStateUpdate presenter, -> presenter.setExplicitHeight(30)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [5]))
+          expect(stateForCursor(presenter, [1, 2])).toBeUndefined()
+          expect(stateForCursor(presenter, [2, 4])).toBeDefined()
+          expect(stateForCursor(presenter, [3, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 5])).toBeUndefined()
+          expect(stateForCursor(presenter, [5, 12])).toBeDefined()
+          expect(stateForCursor(presenter, [8, 4])).toBeUndefined()
+
+        it "updates when ::lineHeight changes", ->
+          editor.setSelectedBufferRanges([
+            [[1, 2], [1, 2]],
+            [[2, 4], [2, 4]],
+            [[3, 4], [3, 5]]
+            [[5, 12], [5, 12]],
+            [[8, 4], [8, 4]]
+          ])
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20)
+
+          expectStateUpdate presenter, -> presenter.setLineHeight(5)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [5, 8]))
+          expect(stateForCursor(presenter, [1, 2])).toBeUndefined()
+          expect(stateForCursor(presenter, [2, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 5])).toBeUndefined()
+          expect(stateForCursor(presenter, [5, 12])).toBeDefined()
+          expect(stateForCursor(presenter, [8, 4])).toBeDefined()
 
       describe ".cursors", ->
         stateForCursor = (presenter, cursorIndex) ->
