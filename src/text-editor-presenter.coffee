@@ -408,7 +408,7 @@ class TextEditorPresenter
 
   updateCursorsState: ->
     @state.content.cursors = {}
-    @state.content.cursorsByScreenRowAndColumn = {}
+    visibleCursorsByScreenRow = {}
 
     for cursor in @model.cursors # using property directly to avoid allocation
       continue unless @startRow? and @endRow? and @hasPixelRectRequirements() and @baseCharacterWidth?
@@ -420,6 +420,13 @@ class TextEditorPresenter
       @state.content.cursors[cursor.id] = pixelRect
       @state.content.cursorsByScreenRowAndColumn[row] ?= {}
       @state.content.cursorsByScreenRowAndColumn[row][column] = true
+      visibleCursorsByScreenRow[row] ?= {}
+      visibleCursorsByScreenRow[row][column] = true
+
+    for row, columns of @state.content.cursorsByScreenRowAndColumn
+      for column of columns
+        unless visibleCursorsByScreenRow[row]?[column]
+          delete @state.content.cursorsByScreenRowAndColumn[row][column]
 
     return
 
