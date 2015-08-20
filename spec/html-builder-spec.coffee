@@ -1,6 +1,6 @@
 {HtmlBuilder, Tag} = require '../src/html-builder'
 
-fdescribe "HtmlBuilder", ->
+describe "HtmlBuilder", ->
   htmlBuilder = null
 
   beforeEach ->
