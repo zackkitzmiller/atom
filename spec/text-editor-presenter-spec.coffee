@@ -1064,8 +1064,9 @@ describe "TextEditorPresenter", ->
               expect(lineStateForScreenRow(presenter, 0).decorationClasses).toContain 'a'
               expect(lineStateForScreenRow(presenter, 1).decorationClasses).toContain 'a'
 
-      describe ".cursorsByScreenRowAndColumn", ->
-        stateForCursorAtPosition = (state, [row, column]) ->
+      fffdescribe ".cursorsByScreenRowAndColumn", ->
+        stateForCursorAtPosition = (state, position) ->
+          {row, column} = Point.fromObject(position)
           state.content.cursorsByScreenRowAndColumn[row]?[column]
 
         shouldRefreshScreenRow = (presenter, state, row) ->
@@ -1084,16 +1085,65 @@ describe "TextEditorPresenter", ->
           presenter = buildPresenter(explicitHeight: 30, scrollTop: 20)
           state = presenter.getState()
 
+          # Out-of-view cursors
           expect(stateForCursorAtPosition(state, [1, 2])).toBeUndefined()
+          expect(stateForCursorAtPosition(state, [8, 4])).toBeUndefined()
 
-          expect(stateForCursorAtPosition(state, [2, 4])).toBeDefined()
-
+          # Non-empty selections
           expect(stateForCursorAtPosition(state, [3, 4])).toBeUndefined()
           expect(stateForCursorAtPosition(state, [3, 5])).toBeUndefined()
 
+          # Empty and on-screen selections
+          expect(stateForCursorAtPosition(state, [2, 4])).toBeDefined()
           expect(stateForCursorAtPosition(state, [5, 12])).toBeDefined()
 
-          expect(stateForCursorAtPosition(state, [8, 4])).toBeUndefined()
+        it "updates when cursors are added, moved, hidden, shown, or destroyed", ->
+          editor.setSelectedBufferRanges([
+            [[1, 2], [1, 2]],
+            [[3, 4], [3, 5]]
+          ])
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20)
+
+          # moving into view
+          oldCursorPosition = editor.getCursors()[0].getScreenPosition()
+          expect(stateForCursorAtPosition(presenter.getState(), oldCursorPosition)).toBeUndefined()
+          expectStateUpdate presenter, ->
+            editor.getCursors()[0].setBufferPosition([2, 4])
+          expect(stateForCursorAtPosition(presenter.getState(), oldCursorPosition)).toBeUndefined()
+          expect(stateForCursorAtPosition(presenter.getState(), [2, 4])).toBeDefined()
+
+          # showing
+          expectStateUpdate presenter, -> editor.getSelections()[1].clear()
+          expect(stateForCursorAtPosition(presenter.getState(), [3, 5])).toBeDefined()
+
+          # hiding
+          expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[3, 4], [3, 5]])
+          expect(stateForCursorAtPosition(presenter.getState(), [3, 4])).toBeUndefined()
+          expect(stateForCursorAtPosition(presenter.getState(), [3, 5])).toBeUndefined()
+
+          # moving out of view
+          oldCursorPosition = editor.getCursors()[0].getScreenPosition()
+          expectStateUpdate presenter, ->
+            editor.getCursors()[0].setBufferPosition([10, 4])
+          expect(stateForCursorAtPosition(presenter.getState(), oldCursorPosition)).toBeUndefined()
+          expect(stateForCursorAtPosition(presenter.getState(), [10, 4])).toBeUndefined()
+
+          # adding
+          expectStateUpdate presenter, ->
+            editor.addCursorAtBufferPosition([4, 4])
+          expect(stateForCursorAtPosition(presenter.getState(), [4, 4])).toBeDefined()
+
+          # moving added cursor
+          oldCursorPosition = editor.getCursors()[2].getScreenPosition()
+          expectStateUpdate presenter, ->
+            editor.getCursors()[2].setBufferPosition([4, 6])
+          expect(stateForCursorAtPosition(presenter.getState(), oldCursorPosition)).toBeUndefined()
+          expect(stateForCursorAtPosition(presenter.getState(), [4, 6])).toBeDefined()
+
+          # destroying
+          destroyedCursor = editor.getCursors()[2]
+          expectStateUpdate presenter, -> destroyedCursor.destroy()
+          expect(stateForCursorAtPosition(presenter.getState(), destroyedCursor.getScreenPosition())).toBeUndefined()
 
       describe ".cursors", ->
         stateForCursor = (presenter, cursorIndex) ->
