@@ -218,6 +218,7 @@ class TextEditorPresenter
         tiles: {}
         highlights: {}
         overlays: {}
+        cursorsByScreenRowAndColumn: {}
       gutters: []
     # Shared state that is copied into ``@state.gutters`.
     @sharedGutterStyles = {}
@@ -407,16 +408,20 @@ class TextEditorPresenter
 
   updateCursorsState: ->
     @state.content.cursors = {}
-    @updateCursorState(cursor) for cursor in @model.cursors # using property directly to avoid allocation
+    @state.content.cursorsByScreenRowAndColumn = {}
+
+    for cursor in @model.cursors # using property directly to avoid allocation
+      continue unless @startRow? and @endRow? and @hasPixelRectRequirements() and @baseCharacterWidth?
+      continue unless cursor.isVisible() and @startRow <= cursor.getScreenRow() < @endRow
+
+      {row, column} = cursor.getScreenPosition()
+      pixelRect = @pixelRectForScreenRange(cursor.getScreenRange())
+      pixelRect.width = @baseCharacterWidth if pixelRect.width is 0
+      @state.content.cursors[cursor.id] = pixelRect
+      @state.content.cursorsByScreenRowAndColumn[row] ?= {}
+      @state.content.cursorsByScreenRowAndColumn[row][column] = true
+
     return
-
-  updateCursorState: (cursor) ->
-    return unless @startRow? and @endRow? and @hasPixelRectRequirements() and @baseCharacterWidth?
-    return unless cursor.isVisible() and @startRow <= cursor.getScreenRow() < @endRow
-
-    pixelRect = @pixelRectForScreenRange(cursor.getScreenRange())
-    pixelRect.width = @baseCharacterWidth if pixelRect.width is 0
-    @state.content.cursors[cursor.id] = pixelRect
 
   updateOverlaysState: ->
     return unless @hasOverlayPositionRequirements()

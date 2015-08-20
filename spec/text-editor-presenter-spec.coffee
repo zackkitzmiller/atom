@@ -1064,6 +1064,37 @@ describe "TextEditorPresenter", ->
               expect(lineStateForScreenRow(presenter, 0).decorationClasses).toContain 'a'
               expect(lineStateForScreenRow(presenter, 1).decorationClasses).toContain 'a'
 
+      describe ".cursorsByScreenRowAndColumn", ->
+        stateForCursorAtPosition = (state, [row, column]) ->
+          state.content.cursorsByScreenRowAndColumn[row]?[column]
+
+        shouldRefreshScreenRow = (presenter, state, row) ->
+          tileRow = presenter.tileForRow(row)
+          line = editor.tokenizedLineForScreenRow(row)
+          state.content.tiles[tileRow]?.lines[line.id]?.needsRefresh
+
+        it "contains cursors for empty selections that are visible on screen", ->
+          editor.setSelectedBufferRanges([
+            [[1, 2], [1, 2]],
+            [[2, 4], [2, 4]],
+            [[3, 4], [3, 5]]
+            [[5, 12], [5, 12]],
+            [[8, 4], [8, 4]]
+          ])
+          presenter = buildPresenter(explicitHeight: 30, scrollTop: 20)
+          state = presenter.getState()
+
+          expect(stateForCursorAtPosition(state, [1, 2])).toBeUndefined()
+
+          expect(stateForCursorAtPosition(state, [2, 4])).toBeDefined()
+
+          expect(stateForCursorAtPosition(state, [3, 4])).toBeUndefined()
+          expect(stateForCursorAtPosition(state, [3, 5])).toBeUndefined()
+
+          expect(stateForCursorAtPosition(state, [5, 12])).toBeDefined()
+
+          expect(stateForCursorAtPosition(state, [8, 4])).toBeUndefined()
+
       describe ".cursors", ->
         stateForCursor = (presenter, cursorIndex) ->
           presenter.getState().content.cursors[presenter.model.getCursors()[cursorIndex].id]
