@@ -411,6 +411,11 @@ class TextEditorPresenter
   clearLinesToRebuild: ->
     @state.content.linesToRebuild = {}
 
+  addScreenRowToLinesToRebuild: (screenRow) ->
+    line = @model.tokenizedLineForScreenRow(screenRow)
+    if line? and @startRow <= screenRow < @endRow
+      @state.content.linesToRebuild[line.id] = true
+
   updateCursorsState: ->
     @state.content.cursors = {}
     visibleCursorsByScreenRow = {}
@@ -425,8 +430,7 @@ class TextEditorPresenter
       @state.content.cursors[cursor.id] = pixelRect
 
       unless @state.content.cursorsByScreenRowAndColumn[row]?[column]
-        line = @model.tokenizedLineForScreenRow(row)
-        @state.content.linesToRebuild[line.id] = true
+        @addScreenRowToLinesToRebuild(row)
 
         @state.content.cursorsByScreenRowAndColumn[row] ?= {}
         @state.content.cursorsByScreenRowAndColumn[row][column] = true
@@ -436,10 +440,7 @@ class TextEditorPresenter
 
     for row, columns of @state.content.cursorsByScreenRowAndColumn
       for column of columns when not visibleCursorsByScreenRow[row]?[column]
-        line = @model.tokenizedLineForScreenRow(row)
-        if line? and @startRow <= row < @endRow
-          @state.content.linesToRebuild[line.id] = true
-
+        @addScreenRowToLinesToRebuild(row)
         delete @state.content.cursorsByScreenRowAndColumn[row][column]
 
     return
