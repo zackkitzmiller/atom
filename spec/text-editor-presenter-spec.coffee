@@ -1065,14 +1065,19 @@ describe "TextEditorPresenter", ->
               expect(lineStateForScreenRow(presenter, 1).decorationClasses).toContain 'a'
 
       fffdescribe ".cursorsByScreenRowAndColumn", ->
-        stateForCursorAtPosition = (state, position) ->
+        stateForCursor = (presenter, position) ->
           {row, column} = Point.fromObject(position)
-          state.content.cursorsByScreenRowAndColumn[row]?[column]
+          presenter.getState().content.cursorsByScreenRowAndColumn[row]?[column]
 
-        shouldRefreshScreenRow = (presenter, state, row) ->
-          tileRow = presenter.tileForRow(row)
-          line = editor.tokenizedLineForScreenRow(row)
-          state.content.tiles[tileRow]?.lines[line.id]?.needsRefresh
+        shouldRebuildOnlyScreenRows = (presenter, rows) ->
+          state = presenter.getState()
+          lines = _.map rows, (row) -> editor.tokenizedLineForScreenRow(row)
+
+          Object.keys(state.content.linesToRebuild).length is rows.length and
+            _.every lines, (line) -> state.content.linesToRebuild.hasOwnProperty(line.id)
+
+        shouldRebuildNoScreenRows = (presenter) ->
+          shouldRebuildOnlyScreenRows(presenter, [])
 
         it "contains cursors for empty selections that are visible on screen", ->
           editor.setSelectedBufferRanges([
@@ -1083,19 +1088,18 @@ describe "TextEditorPresenter", ->
             [[8, 4], [8, 4]]
           ])
           presenter = buildPresenter(explicitHeight: 30, scrollTop: 20)
-          state = presenter.getState()
 
           # Out-of-view cursors
-          expect(stateForCursorAtPosition(state, [1, 2])).toBeUndefined()
-          expect(stateForCursorAtPosition(state, [8, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [1, 2])).toBeUndefined()
+          expect(stateForCursor(presenter, [8, 4])).toBeUndefined()
 
           # Non-empty selections
-          expect(stateForCursorAtPosition(state, [3, 4])).toBeUndefined()
-          expect(stateForCursorAtPosition(state, [3, 5])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 5])).toBeUndefined()
 
           # Empty and on-screen selections
-          expect(stateForCursorAtPosition(state, [2, 4])).toBeDefined()
-          expect(stateForCursorAtPosition(state, [5, 12])).toBeDefined()
+          expect(stateForCursor(presenter, [2, 4])).toBeDefined()
+          expect(stateForCursor(presenter, [5, 12])).toBeDefined()
 
         it "updates when cursors are added, moved, hidden, shown, or destroyed", ->
           editor.setSelectedBufferRanges([
@@ -1106,44 +1110,89 @@ describe "TextEditorPresenter", ->
 
           # moving into view
           oldCursorPosition = editor.getCursors()[0].getScreenPosition()
-          expect(stateForCursorAtPosition(presenter.getState(), oldCursorPosition)).toBeUndefined()
+          expect(stateForCursor(presenter, oldCursorPosition)).toBeUndefined()
           expectStateUpdate presenter, ->
             editor.getCursors()[0].setBufferPosition([2, 4])
-          expect(stateForCursorAtPosition(presenter.getState(), oldCursorPosition)).toBeUndefined()
-          expect(stateForCursorAtPosition(presenter.getState(), [2, 4])).toBeDefined()
+          expect(stateForCursor(presenter, oldCursorPosition)).toBeUndefined()
+          expect(stateForCursor(presenter, [2, 4])).toBeDefined()
 
           # showing
           expectStateUpdate presenter, -> editor.getSelections()[1].clear()
-          expect(stateForCursorAtPosition(presenter.getState(), [3, 5])).toBeDefined()
+          expect(stateForCursor(presenter, [3, 5])).toBeDefined()
 
           # hiding
           expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[3, 4], [3, 5]])
-          expect(stateForCursorAtPosition(presenter.getState(), [3, 4])).toBeUndefined()
-          expect(stateForCursorAtPosition(presenter.getState(), [3, 5])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 5])).toBeUndefined()
 
           # moving out of view
           oldCursorPosition = editor.getCursors()[0].getScreenPosition()
           expectStateUpdate presenter, ->
             editor.getCursors()[0].setBufferPosition([10, 4])
-          expect(stateForCursorAtPosition(presenter.getState(), oldCursorPosition)).toBeUndefined()
-          expect(stateForCursorAtPosition(presenter.getState(), [10, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, oldCursorPosition)).toBeUndefined()
+          expect(stateForCursor(presenter, [10, 4])).toBeUndefined()
 
           # adding
           expectStateUpdate presenter, ->
             editor.addCursorAtBufferPosition([4, 4])
-          expect(stateForCursorAtPosition(presenter.getState(), [4, 4])).toBeDefined()
+          expect(stateForCursor(presenter, [4, 4])).toBeDefined()
 
           # moving added cursor
           oldCursorPosition = editor.getCursors()[2].getScreenPosition()
           expectStateUpdate presenter, ->
             editor.getCursors()[2].setBufferPosition([4, 6])
-          expect(stateForCursorAtPosition(presenter.getState(), oldCursorPosition)).toBeUndefined()
-          expect(stateForCursorAtPosition(presenter.getState(), [4, 6])).toBeDefined()
+          expect(stateForCursor(presenter, oldCursorPosition)).toBeUndefined()
+          expect(stateForCursor(presenter, [4, 6])).toBeDefined()
 
           # destroying
           destroyedCursor = editor.getCursors()[2]
           expectStateUpdate presenter, -> destroyedCursor.destroy()
-          expect(stateForCursorAtPosition(presenter.getState(), destroyedCursor.getScreenPosition())).toBeUndefined()
+          expect(stateForCursor(presenter, destroyedCursor.getScreenPosition())).toBeUndefined()
+
+        it "needs to rebuild screen rows when cursors are added, moved, hidden, shown, or destroyed", ->
+          editor.setSelectedBufferRanges([
+            [[1, 2], [1, 2]],
+            [[3, 4], [3, 5]]
+          ])
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20)
+
+          # moving into view
+          expectStateUpdate presenter, ->
+            editor.getCursors()[0].setBufferPosition([2, 4])
+          expect(shouldRebuildOnlyScreenRows(presenter, [2])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # showing
+          expectStateUpdate presenter, -> editor.getSelections()[1].clear()
+          expect(shouldRebuildOnlyScreenRows(presenter, [3])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # hiding
+          expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[3, 4], [3, 5]])
+          expect(shouldRebuildOnlyScreenRows(presenter, [2, 3])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # moving out of view
+          expectStateUpdate presenter, ->
+            editor.getCursors()[0].setBufferPosition([10, 4])
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # adding
+          expectStateUpdate presenter, ->
+            editor.addCursorAtBufferPosition([4, 4])
+          expect(shouldRebuildOnlyScreenRows(presenter, [4])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # moving added cursor
+          expectStateUpdate presenter, ->
+            editor.getCursors()[2].setBufferPosition([3, 6])
+          expect(shouldRebuildOnlyScreenRows(presenter, [3, 4])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # destroying
+          expectStateUpdate presenter, -> editor.getCursors()[2].destroy()
+          expect(shouldRebuildOnlyScreenRows(presenter, [3])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
 
       describe ".cursors", ->
         stateForCursor = (presenter, cursorIndex) ->

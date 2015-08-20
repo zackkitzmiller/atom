@@ -72,6 +72,7 @@ class TextEditorPresenter
     @updateStartRow()
     @updateEndRow()
     @updateCommonGutterState()
+    @clearLinesToRebuild()
 
     @updateFocusedState() if @shouldUpdateFocusedState
     @updateHeightState() if @shouldUpdateHeightState
@@ -219,6 +220,7 @@ class TextEditorPresenter
         highlights: {}
         overlays: {}
         cursorsByScreenRowAndColumn: {}
+        linesToRebuild: {}
       gutters: []
     # Shared state that is copied into ``@state.gutters`.
     @sharedGutterStyles = {}
@@ -406,6 +408,9 @@ class TextEditorPresenter
       delete tileState.lines[id] unless visibleLineIds.hasOwnProperty(id)
     return
 
+  clearLinesToRebuild: ->
+    @state.content.linesToRebuild = {}
+
   updateCursorsState: ->
     @state.content.cursors = {}
     visibleCursorsByScreenRow = {}
@@ -418,15 +423,23 @@ class TextEditorPresenter
       pixelRect = @pixelRectForScreenRange(cursor.getScreenRange())
       pixelRect.width = @baseCharacterWidth if pixelRect.width is 0
       @state.content.cursors[cursor.id] = pixelRect
-      @state.content.cursorsByScreenRowAndColumn[row] ?= {}
-      @state.content.cursorsByScreenRowAndColumn[row][column] = true
+
+      unless @state.content.cursorsByScreenRowAndColumn[row]?[column]
+        line = @model.tokenizedLineForScreenRow(row)
+        @state.content.linesToRebuild[line.id] = true
+
+        @state.content.cursorsByScreenRowAndColumn[row] ?= {}
+        @state.content.cursorsByScreenRowAndColumn[row][column] = true
+
       visibleCursorsByScreenRow[row] ?= {}
       visibleCursorsByScreenRow[row][column] = true
 
     for row, columns of @state.content.cursorsByScreenRowAndColumn
-      for column of columns
-        unless visibleCursorsByScreenRow[row]?[column]
-          delete @state.content.cursorsByScreenRowAndColumn[row][column]
+      for column of columns when not visibleCursorsByScreenRow[row]?[column]
+        if line = @model.tokenizedLineForScreenRow(row)
+          @state.content.linesToRebuild[line.id] = true
+
+        delete @state.content.cursorsByScreenRowAndColumn[row][column]
 
     return
 
