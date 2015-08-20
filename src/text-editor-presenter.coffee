@@ -417,17 +417,13 @@ class TextEditorPresenter
       @state.content.linesToRebuild[line.id] = true
 
   updateCursorsState: ->
-    @state.content.cursors = {}
     visibleCursorsByScreenRow = {}
 
     for cursor in @model.cursors # using property directly to avoid allocation
-      continue unless @startRow? and @endRow? and @hasPixelRectRequirements() and @baseCharacterWidth?
-      continue unless cursor.isVisible() and @startRow <= cursor.getScreenRow() < @endRow
-
       {row, column} = cursor.getScreenPosition()
-      pixelRect = @pixelRectForScreenRange(cursor.getScreenRange())
-      pixelRect.width = @baseCharacterWidth if pixelRect.width is 0
-      @state.content.cursors[cursor.id] = pixelRect
+
+      continue unless @startRow? and @endRow? and @hasPixelRectRequirements() and @baseCharacterWidth?
+      continue unless cursor.isVisible() and @startRow <= row < @endRow
 
       unless @state.content.cursorsByScreenRowAndColumn[row]?[column]
         @addScreenRowToLinesToRebuild(row)

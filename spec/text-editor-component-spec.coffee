@@ -7,10 +7,11 @@ nbsp = String.fromCharCode(160)
 
 fdescribe "TextEditorComponent", ->
   [contentNode, editor, wrapperView, wrapperNode, component, componentNode, verticalScrollbarNode, horizontalScrollbarNode] = []
-  [lineHeightInPixels, charWidth, nextAnimationFrame, noAnimationFrame, tileSize, tileHeightInPixels] = []
+  [lineHeightInPixels, charWidth, nextAnimationFrame, noAnimationFrame, tileSize, tileHeightInPixels, cursorBorderWidth] = []
 
   beforeEach ->
     tileSize = 3
+    cursorBorderWidth = 1
 
     waitsForPromise ->
       atom.packages.activatePackage('language-javascript')
@@ -858,6 +859,14 @@ fdescribe "TextEditorComponent", ->
           expect(lineNumberHasClass(1, 'folded')).toBe false
 
   describe "cursor rendering", ->
+    getBoundingClientRect = (cursorNode) ->
+      cursorsNode = componentNode.querySelector(".cursors")
+      cursorsRect = cursorsNode.getBoundingClientRect()
+      {left, top, width, height} = cursorNode.getBoundingClientRect()
+      left -= cursorsRect.left
+      top -= cursorsRect.top
+      {left, top, width, height}
+
     it "renders the currently visible cursors", ->
       cursor1 = editor.getLastCursor()
       cursor1.setScreenPosition([0, 5], autoscroll: false)
@@ -869,9 +878,12 @@ fdescribe "TextEditorComponent", ->
 
       cursorNodes = componentNode.querySelectorAll('.cursor')
       expect(cursorNodes.length).toBe 1
-      expect(cursorNodes[0].offsetHeight).toBe lineHeightInPixels
-      expect(cursorNodes[0].offsetWidth).toBe charWidth
-      expect(cursorNodes[0].style['-webkit-transform']).toBe "translate(#{5 * charWidth}px, #{0 * lineHeightInPixels}px)"
+      expect(getBoundingClientRect(cursorNodes[0])).toEqual({
+        height: lineHeightInPixels
+        width: charWidth + cursorBorderWidth
+        left: 5 * charWidth
+        top: 0 * lineHeightInPixels
+      })
 
       cursor2 = editor.addCursorAtScreenPosition([8, 11], autoscroll: false)
       cursor3 = editor.addCursorAtScreenPosition([4, 10], autoscroll: false)
@@ -879,9 +891,18 @@ fdescribe "TextEditorComponent", ->
 
       cursorNodes = componentNode.querySelectorAll('.cursor')
       expect(cursorNodes.length).toBe 2
-      expect(cursorNodes[0].offsetTop).toBe 0
-      expect(cursorNodes[0].style['-webkit-transform']).toBe "translate(#{5 * charWidth}px, #{0 * lineHeightInPixels}px)"
-      expect(cursorNodes[1].style['-webkit-transform']).toBe "translate(#{10 * charWidth}px, #{4 * lineHeightInPixels}px)"
+      expect(getBoundingClientRect(cursorNodes[0])).toEqual({
+        height: lineHeightInPixels
+        width: charWidth + cursorBorderWidth
+        left: 5 * charWidth
+        top: 0 * lineHeightInPixels
+      })
+      expect(getBoundingClientRect(cursorNodes[1])).toEqual({
+        height: lineHeightInPixels
+        width: charWidth + cursorBorderWidth
+        left: 10 * charWidth
+        top: 4 * lineHeightInPixels
+      })
 
       verticalScrollbarNode.scrollTop = 4.5 * lineHeightInPixels
       verticalScrollbarNode.dispatchEvent(new UIEvent('scroll'))
@@ -892,13 +913,30 @@ fdescribe "TextEditorComponent", ->
 
       cursorNodes = componentNode.querySelectorAll('.cursor')
       expect(cursorNodes.length).toBe 2
-      expect(cursorNodes[0].style['-webkit-transform']).toBe "translate(#{10 * charWidth - horizontalScrollbarNode.scrollLeft}px, #{4 * lineHeightInPixels - verticalScrollbarNode.scrollTop}px)"
-      expect(cursorNodes[1].style['-webkit-transform']).toBe "translate(#{11 * charWidth - horizontalScrollbarNode.scrollLeft}px, #{8 * lineHeightInPixels - verticalScrollbarNode.scrollTop}px)"
+      expect(getBoundingClientRect(cursorNodes[0])).toEqual({
+        height: lineHeightInPixels
+        width: charWidth + cursorBorderWidth
+        left: 10 * charWidth - horizontalScrollbarNode.scrollLeft
+        top: 4 * lineHeightInPixels - verticalScrollbarNode.scrollTop
+      })
+      expect(getBoundingClientRect(cursorNodes[1])).toEqual({
+        height: lineHeightInPixels
+        width: charWidth + cursorBorderWidth
+        left: 11 * charWidth - horizontalScrollbarNode.scrollLeft
+        top: 8 * lineHeightInPixels - verticalScrollbarNode.scrollTop
+      })
 
       editor.onDidChangeCursorPosition cursorMovedListener = jasmine.createSpy('cursorMovedListener')
       cursor3.setScreenPosition([4, 11], autoscroll: false)
       nextAnimationFrame()
-      expect(cursorNodes[0].style['-webkit-transform']).toBe "translate(#{11 * charWidth - horizontalScrollbarNode.scrollLeft}px, #{4 * lineHeightInPixels - verticalScrollbarNode.scrollTop}px)"
+
+      cursorNodes = componentNode.querySelectorAll('.cursor')
+      expect(getBoundingClientRect(cursorNodes[0])).toEqual({
+        height: lineHeightInPixels
+        width: charWidth + cursorBorderWidth
+        left: 11 * charWidth - horizontalScrollbarNode.scrollLeft
+        top: 4 * lineHeightInPixels - verticalScrollbarNode.scrollTop
+      })
       expect(cursorMovedListener).toHaveBeenCalled()
 
       cursor3.destroy()
@@ -906,7 +944,12 @@ fdescribe "TextEditorComponent", ->
       cursorNodes = componentNode.querySelectorAll('.cursor')
 
       expect(cursorNodes.length).toBe 1
-      expect(cursorNodes[0].style['-webkit-transform']).toBe "translate(#{11 * charWidth - horizontalScrollbarNode.scrollLeft}px, #{8 * lineHeightInPixels - verticalScrollbarNode.scrollTop}px)"
+      expect(getBoundingClientRect(cursorNodes[0])).toEqual({
+        height: lineHeightInPixels
+        width: charWidth + cursorBorderWidth
+        left: 11 * charWidth - horizontalScrollbarNode.scrollLeft
+        top: 8 * lineHeightInPixels - verticalScrollbarNode.scrollTop
+      })
 
     it "accounts for character widths when positioning cursors", ->
       atom.config.set('editor.fontFamily', 'sans-serif')
@@ -922,8 +965,8 @@ fdescribe "TextEditorComponent", ->
       range.setEnd(cursorLocationTextNode, 1)
       rangeRect = range.getBoundingClientRect()
 
-      expect(cursorRect.left).toBe rangeRect.left
-      expect(cursorRect.width).toBe rangeRect.width
+      expect(cursorRect.left).toBe rangeRect.left - cursorBorderWidth
+      expect(cursorRect.width).toBe rangeRect.width + cursorBorderWidth
 
     it "accounts for the width of paired characters when positioning cursors", ->
       atom.config.set('editor.fontFamily', 'sans-serif')
@@ -934,14 +977,14 @@ fdescribe "TextEditorComponent", ->
       cursor = componentNode.querySelector('.cursor')
       cursorRect = cursor.getBoundingClientRect()
 
-      cursorLocationTextNode = component.lineNodeForScreenRow(0).querySelector('.source.js').firstChild
+      cursorLocationTextNode = component.lineNodeForScreenRow(0).querySelector('.source.js').children[0]
       range = document.createRange()
-      range.setStart(cursorLocationTextNode, 3)
-      range.setEnd(cursorLocationTextNode, 4)
+      range.setStart(cursorLocationTextNode, 0)
+      range.setEnd(cursorLocationTextNode, 1)
       rangeRect = range.getBoundingClientRect()
 
-      expect(cursorRect.left).toBe rangeRect.left
-      expect(cursorRect.width).toBe rangeRect.width
+      expect(cursorRect.left).toBe rangeRect.left - cursorBorderWidth
+      expect(cursorRect.width).toBe rangeRect.width + cursorBorderWidth
 
     it "positions cursors correctly after character widths are changed via a stylesheet change", ->
       atom.config.set('editor.fontFamily', 'sans-serif')
@@ -964,8 +1007,8 @@ fdescribe "TextEditorComponent", ->
       range.setEnd(cursorLocationTextNode, 1)
       rangeRect = range.getBoundingClientRect()
 
-      expect(cursorRect.left).toBe rangeRect.left
-      expect(cursorRect.width).toBe rangeRect.width
+      expect(cursorRect.left).toBe rangeRect.left - cursorBorderWidth
+      expect(cursorRect.width).toBe rangeRect.width + cursorBorderWidth
 
       atom.themes.removeStylesheet('test')
 
@@ -973,13 +1016,13 @@ fdescribe "TextEditorComponent", ->
       editor.setCursorScreenPosition([0, Infinity])
       nextAnimationFrame()
       cursorNode = componentNode.querySelector('.cursor')
-      expect(cursorNode.offsetWidth).toBe charWidth
+      expect(cursorNode.offsetWidth).toBe charWidth + cursorBorderWidth
 
     it "gives the cursor a non-zero width even if it's inside atomic tokens", ->
       editor.setCursorScreenPosition([1, 0])
       nextAnimationFrame()
       cursorNode = componentNode.querySelector('.cursor')
-      expect(cursorNode.offsetWidth).toBe charWidth
+      expect(cursorNode.offsetWidth).toBe charWidth + cursorBorderWidth
 
     it "blinks cursors when they aren't moving", ->
       cursorsNode = componentNode.querySelector('.cursors')
@@ -1013,30 +1056,36 @@ fdescribe "TextEditorComponent", ->
 
       cursorNodes = componentNode.querySelectorAll('.cursor')
       expect(cursorNodes.length).toBe 1
-      expect(cursorNodes[0].style['-webkit-transform']).toBe "translate(#{8 * charWidth}px, #{6 * lineHeightInPixels}px)"
+      expect(getBoundingClientRect(cursorNodes[0])).toEqual({
+        height: lineHeightInPixels
+        width: charWidth + cursorBorderWidth
+        left: 8 * charWidth
+        top: 6 * lineHeightInPixels
+      })
 
     it "updates cursor positions when the line height changes", ->
       editor.setCursorBufferPosition([1, 10])
       component.setLineHeight(2)
       nextAnimationFrame()
       cursorNode = componentNode.querySelector('.cursor')
-      expect(cursorNode.style['-webkit-transform']).toBe "translate(#{10 * editor.getDefaultCharWidth()}px, #{editor.getLineHeightInPixels()}px)"
+      expect(getBoundingClientRect(cursorNode)).toEqual({
+        height: editor.getLineHeightInPixels()
+        width: charWidth + cursorBorderWidth
+        left: 10 * charWidth
+        top: editor.getLineHeightInPixels()
+      })
 
     it "updates cursor positions when the font size changes", ->
       editor.setCursorBufferPosition([1, 10])
       component.setFontSize(10)
       nextAnimationFrame()
       cursorNode = componentNode.querySelector('.cursor')
-      expect(cursorNode.style['-webkit-transform']).toBe "translate(#{10 * editor.getDefaultCharWidth()}px, #{editor.getLineHeightInPixels()}px)"
-
-    it "updates cursor positions when the font family changes", ->
-      editor.setCursorBufferPosition([1, 10])
-      component.setFontFamily('sans-serif')
-      nextAnimationFrame()
-      cursorNode = componentNode.querySelector('.cursor')
-
-      {left} = wrapperNode.pixelPositionForScreenPosition([1, 10])
-      expect(cursorNode.style['-webkit-transform']).toBe "translate(#{left}px, #{editor.getLineHeightInPixels()}px)"
+      expect(getBoundingClientRect(cursorNode)).toEqual({
+        height: editor.getLineHeightInPixels()
+        width: editor.getDefaultCharWidth() + cursorBorderWidth
+        left: 10 * editor.getDefaultCharWidth()
+        top: 1 * editor.getLineHeightInPixels()
+      })
 
   describe "selection rendering", ->
     [scrollViewNode, scrollViewClientLeft] = []

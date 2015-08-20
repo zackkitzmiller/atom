@@ -1,6 +1,5 @@
 {$$} = require 'space-pen'
 
-CursorsComponent = require './cursors-component'
 LinesTileComponent = require './lines-tile-component'
 TiledComponent = require './tiled-component'
 
@@ -13,15 +12,13 @@ class LinesComponent extends TiledComponent
   constructor: ({@presenter, @hostElement, @useShadowDOM, visible}) ->
     @domNode = document.createElement('div')
     @domNode.classList.add('lines')
+    @domNode.classList.add("cursors")
     @tilesNode = document.createElement("div")
     # Create a new stacking context, so that tiles z-index does not interfere
     # with other visual elements.
     @tilesNode.style.isolation = "isolate"
     @tilesNode.style.zIndex = 0
     @domNode.appendChild(@tilesNode)
-
-    @cursorsComponent = new CursorsComponent
-    @domNode.appendChild(@cursorsComponent.getDomNode())
 
     if @useShadowDOM
       insertionPoint = document.createElement('content')
@@ -43,6 +40,13 @@ class LinesComponent extends TiledComponent
       @domNode.style.backgroundColor = @newState.backgroundColor
       @oldState.backgroundColor = @newState.backgroundColor
 
+    if @newState.cursorsVisible isnt @oldState.cursorsVisible
+      if @newState.cursorsVisible
+        @domNode.classList.remove 'blink-off'
+      else
+        @domNode.classList.add 'blink-off'
+      @oldState.cursorsVisible = @newState.cursorsVisible
+
   afterUpdateSync: (state) ->
     if @newState.placeholderText isnt @oldState.placeholderText
       @placeholderTextDiv?.remove()
@@ -55,8 +59,6 @@ class LinesComponent extends TiledComponent
     if @newState.width isnt @oldState.width
       @domNode.style.width = @newState.width + 'px'
       @oldState.width = @newState.width
-
-    @cursorsComponent.updateSync(state)
 
     @oldState.indentGuidesVisible = @newState.indentGuidesVisible
 

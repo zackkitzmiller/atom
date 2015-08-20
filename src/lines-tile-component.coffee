@@ -98,9 +98,9 @@ class LinesTileComponent
     newLinesHTML = null
 
     for id, lineState of @newTileState.lines
-      if @oldTileState.lines.hasOwnProperty(id)
-        @updateLineNode(id)
-      else
+      if not @oldTileState.lines.hasOwnProperty(id) or @newState.linesToRebuild[id]
+        @removeLineNode(id) if @oldTileState.lines.hasOwnProperty(id)
+
         newLineIds ?= []
         newLinesHTML ?= ""
         newLineIds.push(id)
@@ -108,6 +108,8 @@ class LinesTileComponent
         @screenRowsByLineId[id] = lineState.screenRow
         @lineIdsByScreenRow[lineState.screenRow] = id
         @oldTileState.lines[id] = cloneObject(lineState)
+      else
+        @updateLineNode(id)
 
     return unless newLineIds?
 
@@ -142,8 +144,14 @@ class LinesTileComponent
     lineHTML
 
   buildEmptyLineInnerHTML: (id) ->
+    lineState = @newTileState.lines[id]
     {indentGuidesVisible} = @newState
-    {indentLevel, tabLength, endOfLineInvisibles} = @newTileState.lines[id]
+    {indentLevel, tabLength, endOfLineInvisibles, @screenRow} = lineState
+
+    @htmlBuilder.reset()
+    @characterIterator.reset(lineState)
+
+    @handleCursor(true)
 
     if indentGuidesVisible and indentLevel > 0
       invisibleIndex = 0
@@ -160,9 +168,9 @@ class LinesTileComponent
       while invisibleIndex < endOfLineInvisibles?.length
         lineHTML += "<span class='invisible-character'>#{endOfLineInvisibles[invisibleIndex++]}</span>"
 
-      lineHTML
+      @htmlBuilder.toString() + lineHTML
     else
-      @buildEndOfLineHTML(id) or '&nbsp;'
+      @htmlBuilder.toString() + (@buildEndOfLineHTML(id) or '&nbsp;')
 
   handleBeginningOfToken: ->
     return unless @characterIterator.isAtBeginningOfToken()
@@ -240,15 +248,27 @@ class LinesTileComponent
 
     @htmlBuilder.closeTag(@trailingWhitespaceTag)
 
+  handleCursor: (endOfLine = false) ->
+    screenColumn = @characterIterator.getCharIndex()
+    return unless @newState.cursorsByScreenRowAndColumn[@screenRow]?[screenColumn]
+
+    cursorTag = @htmlBuilder.openTag(new Tag("span", "cursor"))
+    placeholderTag = @htmlBuilder.openTag(new Tag("span", "text-placeholder"))
+    if endOfLine
+      @htmlBuilder.put(" ")
+    else
+      @htmlBuilder.put(@characterIterator.getChar())
+    @htmlBuilder.closeTag(placeholderTag)
+    @htmlBuilder.closeTag(cursorTag)
+
   buildLineInnerHTML: (id) ->
     lineState = @newTileState.lines[id]
 
-    {@firstNonWhitespaceIndex, @firstTrailingWhitespaceIndex, @invisibles} = lineState
+    {@firstNonWhitespaceIndex, @firstTrailingWhitespaceIndex, @invisibles, @screenRow} = lineState
     @lineIsWhitespaceOnly = @firstTrailingWhitespaceIndex is 0
 
     @htmlBuilder.reset()
     @characterIterator.reset(lineState)
-    @tokenIterator.reset(lineState)
     @scopeTags = []
 
     while @characterIterator.next()
@@ -256,6 +276,7 @@ class LinesTileComponent
 
       @handleBeginningOfLeadingWhitespace()
       @handleBeginningOfTrailingWhitespace()
+      @handleCursor()
       @htmlBuilder.put(@characterIterator.getChar())
       @handleEndingOfLeadingWhitespace()
       @handleEndingOfTrailingWhitespace()
@@ -265,6 +286,8 @@ class LinesTileComponent
 
     for scope in @characterIterator.getScopes()
       @htmlBuilder.closeTag(@scopeTags.pop())
+
+    @handleCursor(true)
 
     @htmlBuilder.toString() + @buildEndOfLineHTML(id)
 
