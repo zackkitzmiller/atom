@@ -164,91 +164,107 @@ class LinesTileComponent
     else
       @buildEndOfLineHTML(id) or '&nbsp;'
 
+  handleBeginningOfToken: ->
+    return unless @characterIterator.isAtBeginningOfToken()
+
+    tokenStart = @characterIterator.getTokenStart()
+    tokenEnd = @characterIterator.getTokenEnd()
+
+    for scope in @characterIterator.getScopeEnds()
+      @htmlBuilder.closeTag(@scopeTags.pop())
+
+    for scope in @characterIterator.getScopeStarts()
+      scopeTag = new Tag("span", scope.replace(/\.+/g, ' '))
+      @htmlBuilder.openTag(scopeTag)
+      @scopeTags.push(scopeTag)
+
+    if hasLeadingWhitespace = tokenStart < @firstNonWhitespaceIndex
+      @tokenFirstNonWhitespaceIndex = @firstNonWhitespaceIndex - tokenStart
+    else
+      @tokenFirstNonWhitespaceIndex = null
+
+    if hasTrailingWhitespace = tokenEnd > @firstTrailingWhitespaceIndex
+      @tokenFirstTrailingWhitespaceIndex = Math.max(0, @firstTrailingWhitespaceIndex - tokenStart)
+    else
+      @tokenFirstTrailingWhitespaceIndex = null
+
+    @hasIndentGuide =
+      @newState.indentGuidesVisible and
+        (hasLeadingWhitespace or @lineIsWhitespaceOnly)
+
+    @hasInvisibleCharacters =
+      (@invisibles?.tab and @characterIterator.isHardTab()) or
+        (@invisibles?.space and (hasLeadingWhitespace or hasTrailingWhitespace))
+
+  handleBeginningOfLeadingWhitespace: ->
+    return unless @characterIterator.beginsLeadingWhitespace()
+
+    if @characterIterator.isHardTab()
+      classes = 'hard-tab'
+      classes += ' leading-whitespace'
+      classes += ' indent-guide' if @hasIndentGuide
+      classes += ' invisible-character' if @hasInvisibleCharacters
+    else
+      classes = 'leading-whitespace'
+      classes += ' indent-guide' if @hasIndentGuide
+      classes += ' invisible-character' if @hasInvisibleCharacters
+
+    @leadingWhitespaceTag = new Tag("span", classes)
+    @htmlBuilder.openTag(@leadingWhitespaceTag)
+
+  handleEndingOfLeadingWhitespace: ->
+    return unless @characterIterator.endsLeadingWhitespace()
+
+    @htmlBuilder.closeTag(@leadingWhitespaceTag)
+
+  handleBeginningOfTrailingWhitespace: ->
+    return unless @characterIterator.beginsTrailingWhitespace()
+
+    if @characterIterator.isHardTab()
+      classes = 'hard-tab'
+      classes += ' trailing-whitespace'
+      classes += ' indent-guide' if @hasIndentGuide
+      classes += ' invisible-character' if @hasInvisibleCharacters
+    else
+      tokenIsOnlyWhitespace = @tokenFirstTrailingWhitespaceIndex is 0
+
+      classes = 'trailing-whitespace'
+      classes += ' indent-guide' if @hasIndentGuide and not @tokenFirstNonWhitespaceIndex? and tokenIsOnlyWhitespace
+      classes += ' invisible-character' if @hasInvisibleCharacters
+
+    @trailingWhitespaceTag = new Tag("span", classes)
+    @htmlBuilder.openTag(@trailingWhitespaceTag)
+
+  handleEndingOfTrailingWhitespace: ->
+    return unless @characterIterator.endsTrailingWhitespace()
+
+    @htmlBuilder.closeTag(@trailingWhitespaceTag)
+
   buildLineInnerHTML: (id) ->
     lineState = @newTileState.lines[id]
 
-    {firstNonWhitespaceIndex, firstTrailingWhitespaceIndex, invisibles} = lineState
-    lineIsWhitespaceOnly = firstTrailingWhitespaceIndex is 0
+    {@firstNonWhitespaceIndex, @firstTrailingWhitespaceIndex, @invisibles} = lineState
+    @lineIsWhitespaceOnly = @firstTrailingWhitespaceIndex is 0
 
     @htmlBuilder.reset()
     @characterIterator.reset(lineState)
     @tokenIterator.reset(lineState)
-    scopeTags = []
+    @scopeTags = []
 
     while @characterIterator.next()
-      if @characterIterator.isAtBeginningOfToken()
-        tokenStart = @characterIterator.getTokenStart()
-        tokenEnd = @characterIterator.getTokenEnd()
+      @handleBeginningOfToken()
 
-        for scope in @characterIterator.getScopeEnds()
-          @htmlBuilder.closeTag(scopeTags.pop())
-
-        for scope in @characterIterator.getScopeStarts()
-          scopeTag = new Tag("span", scope.replace(/\.+/g, ' '))
-          @htmlBuilder.openTag(scopeTag)
-          scopeTags.push(scopeTag)
-
-        if hasLeadingWhitespace = tokenStart < firstNonWhitespaceIndex
-          tokenFirstNonWhitespaceIndex = firstNonWhitespaceIndex - tokenStart
-        else
-          tokenFirstNonWhitespaceIndex = null
-
-        if hasTrailingWhitespace = tokenEnd > firstTrailingWhitespaceIndex
-          tokenFirstTrailingWhitespaceIndex = Math.max(0, firstTrailingWhitespaceIndex - tokenStart)
-        else
-          tokenFirstTrailingWhitespaceIndex = null
-
-        hasIndentGuide =
-          @newState.indentGuidesVisible and
-            (hasLeadingWhitespace or lineIsWhitespaceOnly)
-
-        hasInvisibleCharacters =
-          (invisibles?.tab and @characterIterator.isHardTab()) or
-            (invisibles?.space and (hasLeadingWhitespace or hasTrailingWhitespace))
-
-      if @characterIterator.beginsLeadingWhitespace()
-        if @characterIterator.isHardTab()
-          classes = 'hard-tab'
-          classes += ' leading-whitespace'
-          classes += ' indent-guide' if hasIndentGuide
-          classes += ' invisible-character' if hasInvisibleCharacters
-        else
-          classes = 'leading-whitespace'
-          classes += ' indent-guide' if hasIndentGuide
-          classes += ' invisible-character' if hasInvisibleCharacters
-
-        leadingWhitespaceTag = new Tag("span", classes)
-        @htmlBuilder.openTag(leadingWhitespaceTag)
-
-      if @characterIterator.beginsTrailingWhitespace()
-        if @characterIterator.isHardTab()
-          classes = 'hard-tab'
-          classes += ' trailing-whitespace'
-          classes += ' indent-guide' if hasIndentGuide
-          classes += ' invisible-character' if hasInvisibleCharacters
-        else
-          tokenIsOnlyWhitespace = tokenFirstTrailingWhitespaceIndex is 0
-
-          classes = 'trailing-whitespace'
-          classes += ' indent-guide' if hasIndentGuide and not tokenFirstNonWhitespaceIndex? and tokenIsOnlyWhitespace
-          classes += ' invisible-character' if hasInvisibleCharacters
-
-        trailingWhitespaceTag = new Tag("span", classes)
-        @htmlBuilder.openTag(trailingWhitespaceTag)
-
+      @handleBeginningOfLeadingWhitespace()
+      @handleBeginningOfTrailingWhitespace()
       @htmlBuilder.put(@characterIterator.getChar())
-
-      if @characterIterator.endsLeadingWhitespace()
-        @htmlBuilder.closeTag(leadingWhitespaceTag)
-
-      if @characterIterator.endsTrailingWhitespace()
-        @htmlBuilder.closeTag(trailingWhitespaceTag)
+      @handleEndingOfLeadingWhitespace()
+      @handleEndingOfTrailingWhitespace()
 
     for scope in @characterIterator.getScopeEnds()
-      @htmlBuilder.closeTag(scopeTags.pop())
+      @htmlBuilder.closeTag(@scopeTags.pop())
 
     for scope in @characterIterator.getScopes()
-      @htmlBuilder.closeTag(scopeTags.pop())
+      @htmlBuilder.closeTag(@scopeTags.pop())
 
     @htmlBuilder.toString() + @buildEndOfLineHTML(id)
 
