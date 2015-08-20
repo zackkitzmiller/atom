@@ -1169,7 +1169,7 @@ describe "TextEditorPresenter", ->
 
           # hiding
           expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[3, 4], [3, 5]])
-          expect(shouldRebuildOnlyScreenRows(presenter, [2, 3])).toBe(true)
+          expect(shouldRebuildOnlyScreenRows(presenter, [3])).toBe(true)
           expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
 
           # moving out of view

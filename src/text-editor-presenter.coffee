@@ -436,7 +436,8 @@ class TextEditorPresenter
 
     for row, columns of @state.content.cursorsByScreenRowAndColumn
       for column of columns when not visibleCursorsByScreenRow[row]?[column]
-        if line = @model.tokenizedLineForScreenRow(row)
+        line = @model.tokenizedLineForScreenRow(row)
+        if line? and @startRow <= row < @endRow
           @state.content.linesToRebuild[line.id] = true
 
         delete @state.content.cursorsByScreenRowAndColumn[row][column]
