@@ -217,7 +217,6 @@ class TextEditorPresenter
         scrollingVertically: false
         cursorsVisible: false
         tiles: {}
-        highlights: {}
         overlays: {}
         cursorsByScreenRowAndColumn: {}
         highlightsByScreenRowAndColumn: {}
@@ -351,7 +350,6 @@ class TextEditorPresenter
       tile.height = @tileSize * @lineHeight
       tile.display = "block"
       tile.zIndex = zIndex--
-      tile.highlights ?= {}
 
       gutterTile = @lineNumberGutter.tiles[startRow] ?= {}
       gutterTile.top = startRow * @lineHeight - @scrollTop
@@ -1200,6 +1198,7 @@ class TextEditorPresenter
         for id, highlightState of highlights
           continue if @visibleHighlights[row]?[column]?[id]
 
+          @addScreenRowToLinesToRebuild(row)
           delete @state.content.highlightsByScreenRowAndColumn[row][column][id]
 
     return
@@ -1259,6 +1258,7 @@ class TextEditorPresenter
       flashDuration: null
       flashClass: null
     }
+    oldHighlightState = _.clone(highlightState)
     if flash?
       highlightState.flashCount++
       highlightState.flashClass = flash.class
@@ -1271,6 +1271,9 @@ class TextEditorPresenter
     @visibleHighlights[row] ?= {}
     @visibleHighlights[row][column] ?= {}
     @visibleHighlights[row][column][decorationId] = true
+
+    unless _.isEqual(oldHighlightState, highlightState)
+      @addScreenRowToLinesToRebuild(row)
 
   updateHighlightState: (decoration) ->
     return unless @startRow? and @endRow? and @lineHeight? and @hasPixelPositionRequirements()

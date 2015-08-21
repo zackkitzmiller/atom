@@ -1576,6 +1576,59 @@ fdescribe "TextEditorPresenter", ->
           expectStateUpdate presenter, -> destroyedSelection.destroy()
           expectUndefinedStateForHighlight(presenter, destroyedSelection.decoration)
 
+        it "needs to rebuild screen rows when cursors are added, moved, hidden, shown, or destroyed", ->
+          editor.setSelectedBufferRanges([
+            [[1, 2], [1, 4]],
+            [[3, 4], [3, 6]]
+          ])
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 0, tileSize: 2)
+
+          # TODO: check this out again. we'd expect this to rebuild screen row `1`.
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # moving into view
+          expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[2, 4], [2, 6]], autoscroll: false)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [2])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # becoming empty
+          expectStateUpdate presenter, -> editor.getSelections()[1].clear(autoscroll: false)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [2])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # becoming non-empty
+          expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[2, 4], [2, 6]], autoscroll: false)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [2])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # moving out of view
+          expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[3, 4], [3, 6]], autoscroll: false)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [2])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # adding
+          expectStateUpdate presenter, -> editor.addSelectionForBufferRange([[1, 4], [1, 6]], autoscroll: false)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [1])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # moving added selection
+          expectStateUpdate presenter, -> editor.getSelections()[2].setBufferRange([[2, 4], [2, 8]], autoscroll: false)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [1, 2])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
+          # destroying
+          destroyedSelection = editor.getSelections()[2]
+          expectStateUpdate presenter, -> destroyedSelection.destroy()
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [2])).toBe(true)
+          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+
         it "updates when highlight decorations' properties are updated", ->
           marker = editor.markBufferPosition([2, 2])
           highlight = editor.decorateMarker(marker, type: 'highlight', class: 'a')
