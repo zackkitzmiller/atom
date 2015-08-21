@@ -12,6 +12,7 @@ class CharacterIterator
     @currentCharLength = 0
     @tokenTextIndex = 0
     @tokenText = ""
+    @hasNoMoreTokens = false
 
   getScopes: ->
     @tokenIterator.getScopes()
@@ -28,17 +29,26 @@ class CharacterIterator
   getTokenEnd: ->
     @tokenEnd
 
+  advanceToNextNonEmptyToken: ->
+    @hasNoMoreTokens = not @tokenIterator.next()
+    @tokenText = @tokenIterator.getText()
+    @tokenStart = @tokenIterator.getScreenStart()
+    @tokenEnd = @tokenIterator.getScreenEnd()
+    @tokenTextIndex = 0
+
+    return if @hasNoMoreTokens or @tokenText.length > 0
+
+    @advanceToNextNonEmptyToken()
+
   next: ->
+    return false if @hasNoMoreTokens
+
     @tokenTextIndex += @currentCharLength
     @lineCharIndex  += @currentCharLength
 
     if @tokenTextIndex >= @tokenText.length
-      return false unless @tokenIterator.next()
-
-      @tokenText = @tokenIterator.getText()
-      @tokenStart = @tokenIterator.getScreenStart()
-      @tokenEnd = @tokenIterator.getScreenEnd()
-      @tokenTextIndex = 0
+      @advanceToNextNonEmptyToken()
+      return false if @hasNoMoreTokens
 
     if @tokenIterator.isPairedCharacter()
       @currentChar = @tokenText
@@ -50,7 +60,7 @@ class CharacterIterator
     true
 
   getChar: ->
-    @currentChar or ""
+    @currentChar
 
   getCharIndex: ->
     @lineCharIndex

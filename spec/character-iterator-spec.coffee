@@ -166,3 +166,27 @@ describe "CharacterIterator", ->
     expect(iterator.beginsTrailingWhitespace()).toBe(false)
     expect(iterator.endsTrailingWhitespace()).toBe(true)
     expect(iterator.getChar()).toBe(" ")
+
+  it "skips empty tokens", ->
+    editor.setText("// hey")
+    iterator.reset(editor.tokenizedLineForScreenRow(0))
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.getChar()).toBe("/")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.getChar()).toBe("/")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.getChar()).toBe(" ")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.getChar()).toBe("h")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.getChar()).toBe("e")
+
+    expect(iterator.next()).toBe(true)
+    expect(iterator.getChar()).toBe("y")
+
+    expect(iterator.next()).toBe(false)
