@@ -1079,6 +1079,25 @@ fdescribe "TextEditorPresenter", ->
         shouldRebuildNoScreenRows = (presenter) ->
           shouldRebuildOnlyScreenRows(presenter, [])
 
+        it "is empty until all of the required measurements are assigned", ->
+          presenter = buildPresenter(explicitHeight: null, lineHeight: null, scrollTop: null, baseCharacterWidth: null, horizontalScrollbarHeight: null)
+          expect(presenter.getState().content.cursorsByScreenRowAndColumn).toEqual({})
+
+          presenter.setExplicitHeight(25)
+          expect(presenter.getState().content.cursorsByScreenRowAndColumn).toEqual({})
+
+          presenter.setLineHeight(10)
+          expect(presenter.getState().content.cursorsByScreenRowAndColumn).toEqual({})
+
+          presenter.setScrollTop(0)
+          expect(presenter.getState().content.cursorsByScreenRowAndColumn).toEqual({})
+
+          presenter.setBaseCharacterWidth(8)
+          expect(presenter.getState().content.cursorsByScreenRowAndColumn).toEqual({})
+
+          presenter.setHorizontalScrollbarHeight(10)
+          expect(presenter.getState().content.cursorsByScreenRowAndColumn).not.toEqual({})
+
         it "contains cursors for empty selections that are visible on screen", ->
           editor.setSelectedBufferRanges([
             [[1, 2], [1, 2]],
