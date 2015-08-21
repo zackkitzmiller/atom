@@ -58,6 +58,16 @@ fdescribe "TextEditorPresenter", ->
 
     expectNoStateUpdate = (presenter, fn) -> expectStateUpdatedToBe(false, presenter, fn)
 
+    shouldRebuildOnlyScreenRows = (presenter, rows) ->
+      state = presenter.getState()
+      lines = _.map rows, (row) -> editor.tokenizedLineForScreenRow(row)
+
+      Object.keys(state.content.linesToRebuild).length is rows.length and
+        _.every lines, (line) -> state.content.linesToRebuild.hasOwnProperty(line.id)
+
+    shouldRebuildNoScreenRows = (presenter) ->
+      shouldRebuildOnlyScreenRows(presenter, [])
+
     tiledContentContract = (stateFn) ->
       it "contains states for tiles that are visible on screen", ->
         presenter = buildPresenter(explicitHeight: 6, scrollTop: 0, lineHeight: 1, tileSize: 2)
@@ -1069,16 +1079,6 @@ fdescribe "TextEditorPresenter", ->
           {row, column} = Point.fromObject(position)
           presenter.getState().content.cursorsByScreenRowAndColumn[row]?[column]
 
-        shouldRebuildOnlyScreenRows = (presenter, rows) ->
-          state = presenter.getState()
-          lines = _.map rows, (row) -> editor.tokenizedLineForScreenRow(row)
-
-          Object.keys(state.content.linesToRebuild).length is rows.length and
-            _.every lines, (line) -> state.content.linesToRebuild.hasOwnProperty(line.id)
-
-        shouldRebuildNoScreenRows = (presenter) ->
-          shouldRebuildOnlyScreenRows(presenter, [])
-
         it "is empty until all of the required measurements are assigned", ->
           presenter = buildPresenter(explicitHeight: null, lineHeight: null, scrollTop: null, baseCharacterWidth: null, horizontalScrollbarHeight: null)
           expect(presenter.getState().content.cursorsByScreenRowAndColumn).toEqual({})
@@ -1360,7 +1360,7 @@ fdescribe "TextEditorPresenter", ->
             advanceClock(cursorBlinkPeriod / 2)
           expect(presenter.getState().content.cursorsVisible).toBe false
 
-      ffdescribe ".highlightsByScreenRowAndColumn", ->
+      describe ".highlightsByScreenRowAndColumn", ->
         expectUndefinedStateForHighlight = (presenter, highlight) ->
           state = presenter.getState().content
           for row, columns of state.highlightsByScreenRowAndColumn
