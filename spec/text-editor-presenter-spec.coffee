@@ -5,7 +5,7 @@ TextBuffer = require 'text-buffer'
 TextEditor = require '../src/text-editor'
 TextEditorPresenter = require '../src/text-editor-presenter'
 
-describe "TextEditorPresenter", ->
+fdescribe "TextEditorPresenter", ->
   # These `describe` and `it` blocks mirror the structure of the ::state object.
   # Please maintain this structure when adding specs for new state fields.
   describe "::getState()", ->
@@ -1087,7 +1087,7 @@ describe "TextEditorPresenter", ->
             [[5, 12], [5, 12]],
             [[8, 4], [8, 4]]
           ])
-          presenter = buildPresenter(explicitHeight: 30, scrollTop: 20)
+          presenter = buildPresenter(explicitHeight: 30, scrollTop: 20, tileSize: 2)
 
           # Out-of-view cursors
           expect(stateForCursor(presenter, [1, 2])).toBeUndefined()
@@ -1106,7 +1106,7 @@ describe "TextEditorPresenter", ->
             [[1, 2], [1, 2]],
             [[3, 4], [3, 5]]
           ])
-          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20)
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20, tileSize: 2)
 
           # moving into view
           oldCursorPosition = editor.getCursors()[0].getScreenPosition()
@@ -1154,7 +1154,7 @@ describe "TextEditorPresenter", ->
             [[1, 2], [1, 2]],
             [[3, 4], [3, 5]]
           ])
-          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20)
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20, tileSize: 2)
 
           # moving into view
           expectStateUpdate presenter, ->
@@ -1175,7 +1175,7 @@ describe "TextEditorPresenter", ->
           # moving out of view
           expectStateUpdate presenter, ->
             editor.getCursors()[0].setBufferPosition([10, 4])
-          expect(shouldRebuildNoScreenRows(presenter)).toBe(true)
+          expect(shouldRebuildOnlyScreenRows(presenter, [2])).toBe(true)
 
           # adding
           expectStateUpdate presenter, ->
@@ -1200,9 +1200,10 @@ describe "TextEditorPresenter", ->
             [[2, 4], [2, 4]],
             [[3, 4], [3, 5]]
             [[5, 12], [5, 12]],
-            [[8, 4], [8, 4]]
+            [[8, 4], [8, 4]],
+            [[11, 0], [11, 0]]
           ])
-          presenter = buildPresenter(explicitHeight: 30, scrollTop: 20)
+          presenter = buildPresenter(explicitHeight: 50, scrollTop: 20, tileSize: 2)
 
           expectStateUpdate presenter, -> presenter.setScrollTop(5 * 10)
 
@@ -1213,9 +1214,22 @@ describe "TextEditorPresenter", ->
           expect(stateForCursor(presenter, [3, 5])).toBeUndefined()
           expect(stateForCursor(presenter, [5, 12])).toBeDefined()
           expect(stateForCursor(presenter, [8, 4])).toBeDefined()
+          expect(stateForCursor(presenter, [11, 0])).toBeDefined()
+
+          editor.clearSelections()
+          presenter.setScrollTop(9 * 10)
+
+          expect(shouldRebuildOnlyScreenRows(presenter, [8])).toBe(true)
+          expect(stateForCursor(presenter, [1, 2])).toBeUndefined()
+          expect(stateForCursor(presenter, [2, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [3, 5])).toBeUndefined()
+          expect(stateForCursor(presenter, [5, 12])).toBeUndefined()
+          expect(stateForCursor(presenter, [8, 4])).toBeUndefined()
+          expect(stateForCursor(presenter, [11, 0])).toBeDefined()
 
         it "updates when ::scrollTop changes after the model was changed", ->
-          presenter = buildPresenter(explicitHeight: 50, scrollTop: 10 * 8)
+          presenter = buildPresenter(explicitHeight: 50, scrollTop: 10 * 8, tileSize: 2)
           editor.setCursorBufferPosition([8, 22])
 
           expect(shouldRebuildOnlyScreenRows(presenter, [8])).toBe(true)
@@ -1237,7 +1251,7 @@ describe "TextEditorPresenter", ->
             [[5, 12], [5, 12]],
             [[8, 4], [8, 4]]
           ])
-          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20)
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20, tileSize: 2)
 
           expectStateUpdate presenter, -> presenter.setExplicitHeight(30)
 
@@ -1257,7 +1271,7 @@ describe "TextEditorPresenter", ->
             [[5, 12], [5, 12]],
             [[8, 4], [8, 4]]
           ])
-          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20)
+          presenter = buildPresenter(explicitHeight: 20, scrollTop: 20, tileSize: 2)
 
           expectStateUpdate presenter, -> presenter.setLineHeight(5)
 
@@ -1326,6 +1340,8 @@ describe "TextEditorPresenter", ->
             advanceClock(cursorBlinkResumeDelay)
             advanceClock(cursorBlinkPeriod / 2)
           expect(presenter.getState().content.cursorsVisible).toBe false
+
+      xdescribe ".highlightsByScreenRowAndColumn", ->
 
       describe ".highlights", ->
         expectUndefinedStateForHighlight = (presenter, decoration) ->

@@ -317,6 +317,12 @@ class TextEditorPresenter
   tileForRow: (row) ->
     row - (row % @tileSize)
 
+  isRowWithinVisibleTiles: (row) ->
+    startRow = @getStartTileRow()
+    endRow = Math.min(@model.getScreenLineCount(), @getEndTileRow() + @tileSize)
+
+    startRow <= row < endRow
+
   getStartTileRow: ->
     Math.max(0, @tileForRow(@startRow))
 
@@ -412,8 +418,9 @@ class TextEditorPresenter
     @state.content.linesToRebuild = {}
 
   addScreenRowToLinesToRebuild: (screenRow) ->
+    screenRow = parseInt(screenRow)
     line = @model.tokenizedLineForScreenRow(screenRow)
-    if line? and @startRow <= screenRow < @endRow
+    if line? and @isRowWithinVisibleTiles(screenRow)
       @state.content.linesToRebuild[line.id] = true
 
   updateCursorsState: ->
@@ -423,7 +430,7 @@ class TextEditorPresenter
       {row, column} = cursor.getScreenPosition()
 
       continue unless @startRow? and @endRow? and @hasPixelRectRequirements() and @baseCharacterWidth?
-      continue unless cursor.isVisible() and @startRow <= row < @endRow
+      continue unless cursor.isVisible() and @isRowWithinVisibleTiles(row)
 
       unless @state.content.cursorsByScreenRowAndColumn[row]?[column]
         @addScreenRowToLinesToRebuild(row)
@@ -437,6 +444,7 @@ class TextEditorPresenter
     for row, columns of @state.content.cursorsByScreenRowAndColumn
       for column of columns when not visibleCursorsByScreenRow[row]?[column]
         @addScreenRowToLinesToRebuild(row)
+
         delete @state.content.cursorsByScreenRowAndColumn[row][column]
 
     return
