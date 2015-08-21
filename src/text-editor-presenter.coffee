@@ -1252,20 +1252,18 @@ class TextEditorPresenter
     return
 
   setHighlightState: (decorationId, {row, column}, flash, properties, begins) ->
-    #   highlightState = tileState.highlights[decoration.id] ?= {
-    #     flashCount: 0
-    #     flashDuration: null
-    #     flashClass: null
-    #   }
-    #
-    #   if flash?
-    #     highlightState.flashCount++
-    #     highlightState.flashClass = flash.class
-    #     highlightState.flashDuration = flash.duration
-
     highlightsByRow = @state.content.highlightsByScreenRowAndColumn[row] ?= {}
     highlightsByColumn = highlightsByRow[column] ?= {}
-    highlightState = highlightsByColumn[decorationId] ?= {}
+    highlightState = highlightsByColumn[decorationId] ?= {
+      flashCount: 0
+      flashDuration: null
+      flashClass: null
+    }
+    if flash?
+      highlightState.flashCount++
+      highlightState.flashClass = flash.class
+      highlightState.flashDuration = flash.duration
+
     highlightState.begins = begins
     highlightState.ends = not begins
     highlightState.class = properties.class

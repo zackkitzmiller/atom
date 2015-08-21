@@ -1534,42 +1534,42 @@ fdescribe "TextEditorPresenter", ->
           ])
           presenter = buildPresenter(explicitHeight: 20, scrollTop: 0, tileSize: 2)
 
-          expectValues stateForSelectionInTile(presenter, 0, 0), {
-            regions: [{top: 10, left: 2 * 10, width: 2 * 10, height: 10}]
-          }
+          expectValues(stateForSelection(presenter, [1, 2], 0), begins: true)
+          expectValues(stateForSelection(presenter, [1, 4], 0), ends: true)
           expectUndefinedStateForSelection(presenter, 1)
 
           # moving into view
           expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[2, 4], [2, 6]], autoscroll: false)
-          expectValues stateForSelectionInTile(presenter, 1, 2), {
-            regions: [{top: 0, left: 4 * 10, width: 2 * 10, height: 10}]
-          }
+
+          expectValues stateForSelection(presenter, [2, 4], 1), begins: true
+          expectValues stateForSelection(presenter, [2, 6], 1), ends: true
 
           # becoming empty
           expectStateUpdate presenter, -> editor.getSelections()[1].clear(autoscroll: false)
+
           expectUndefinedStateForSelection(presenter, 1)
 
           # becoming non-empty
           expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[2, 4], [2, 6]], autoscroll: false)
-          expectValues stateForSelectionInTile(presenter, 1, 2), {
-            regions: [{top: 0, left: 4 * 10, width: 2 * 10, height: 10}]
-          }
+
+          expectValues stateForSelection(presenter, [2, 4], 1), begins: true
+          expectValues stateForSelection(presenter, [2, 6], 1), ends: true
 
           # moving out of view
           expectStateUpdate presenter, -> editor.getSelections()[1].setBufferRange([[3, 4], [3, 6]], autoscroll: false)
+
           expectUndefinedStateForSelection(presenter, 1)
 
           # adding
           expectStateUpdate presenter, -> editor.addSelectionForBufferRange([[1, 4], [1, 6]], autoscroll: false)
-          expectValues stateForSelectionInTile(presenter, 2, 0), {
-            regions: [{top: 10, left: 4 * 10, width: 2 * 10, height: 10}]
-          }
+
+          expectValues stateForSelection(presenter, [1, 4], 2), begins: true
+          expectValues stateForSelection(presenter, [1, 6], 2), ends: true
 
           # moving added selection
           expectStateUpdate presenter, -> editor.getSelections()[2].setBufferRange([[1, 4], [1, 8]], autoscroll: false)
-          expectValues stateForSelectionInTile(presenter, 2, 0), {
-            regions: [{top: 10, left: 4 * 10, width: 4 * 10, height: 10}]
-          }
+          expectValues stateForSelection(presenter, [1, 4], 2), begins: true
+          expectValues stateForSelection(presenter, [1, 8], 2), ends: true
 
           # destroying
           destroyedSelection = editor.getSelections()[2]
@@ -1588,7 +1588,7 @@ fdescribe "TextEditorPresenter", ->
             marker.setBufferRange([[2, 2], [2, 4]])
             highlight.setProperties(class: 'b', type: 'highlight')
 
-          expectValues stateForHighlightInTile(presenter, highlight, 2), {class: 'b'}
+          expectValues(stateForHighlight(presenter, [2, 2], highlight), class: 'b')
 
         it "increments the .flashCount and sets the .flashClass and .flashDuration when the highlight model flashes", ->
           presenter = buildPresenter(explicitHeight: 30, scrollTop: 20, tileSize: 2)
@@ -1599,29 +1599,29 @@ fdescribe "TextEditorPresenter", ->
             marker.setBufferRange([[2, 2], [5, 2]])
             highlight.flash('b', 500)
 
-          expectValues stateForHighlightInTile(presenter, highlight, 2), {
-            flashClass: 'b'
-            flashDuration: 500
-            flashCount: 1
-          }
-          expectValues stateForHighlightInTile(presenter, highlight, 4), {
-            flashClass: 'b'
-            flashDuration: 500
-            flashCount: 1
-          }
+          positions = [
+            [2, 2],
+            [3, 0],
+            [4, 0],
+            [5, 0],
+            [5, 2]
+          ]
+
+          for position in positions
+            expectValues stateForHighlight(presenter, position, highlight), {
+              flashClass: 'b'
+              flashDuration: 500
+              flashCount: 1
+            }
 
           expectStateUpdate presenter, -> highlight.flash('c', 600)
 
-          expectValues stateForHighlightInTile(presenter, highlight, 2), {
-            flashClass: 'c'
-            flashDuration: 600
-            flashCount: 2
-          }
-          expectValues stateForHighlightInTile(presenter, highlight, 4), {
-            flashClass: 'c'
-            flashDuration: 600
-            flashCount: 2
-          }
+          for position in positions
+            expectValues stateForHighlight(presenter, position, highlight), {
+              flashClass: 'c'
+              flashDuration: 600
+              flashCount: 2
+            }
 
       describe ".overlays", ->
         [item] = []
