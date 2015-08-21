@@ -220,6 +220,7 @@ class TextEditorPresenter
         highlights: {}
         overlays: {}
         cursorsByScreenRowAndColumn: {}
+        highlightsByScreenRowAndColumn: {}
         linesToRebuild: {}
       gutters: []
     # Shared state that is copied into ``@state.gutters`.
@@ -1194,9 +1195,12 @@ class TextEditorPresenter
         else if decoration.isType('highlight')
           @updateHighlightState(decoration)
 
-    for tileId, tileState of @state.content.tiles
-      for id, highlight of tileState.highlights
-        delete tileState.highlights[id] unless @visibleHighlights[tileId]?[id]?
+    for row, columns of @state.content.highlightsByScreenRowAndColumn
+      for column, highlights of columns
+        for id, highlightState of highlights
+          continue if @visibleHighlights[row]?[column]?[id]
+
+          delete @state.content.highlightsByScreenRowAndColumn[row][column][id]
 
     return
 
@@ -1247,21 +1251,28 @@ class TextEditorPresenter
 
     return
 
-  intersectRangeWithTile: (range, tileStartRow) ->
-    intersectingStartRow = Math.max(tileStartRow, range.start.row)
-    intersectingEndRow = Math.min(tileStartRow + @tileSize - 1, range.end.row)
-    intersectingRange = new Range(
-      new Point(intersectingStartRow, 0),
-      new Point(intersectingEndRow, Infinity)
-    )
+  setHighlightState: (decorationId, {row, column}, flash, properties, begins) ->
+    #   highlightState = tileState.highlights[decoration.id] ?= {
+    #     flashCount: 0
+    #     flashDuration: null
+    #     flashClass: null
+    #   }
+    #
+    #   if flash?
+    #     highlightState.flashCount++
+    #     highlightState.flashClass = flash.class
+    #     highlightState.flashDuration = flash.duration
 
-    if intersectingStartRow is range.start.row
-      intersectingRange.start.column = range.start.column
+    highlightsByRow = @state.content.highlightsByScreenRowAndColumn[row] ?= {}
+    highlightsByColumn = highlightsByRow[column] ?= {}
+    highlightState = highlightsByColumn[decorationId] ?= {}
+    highlightState.begins = begins
+    highlightState.ends = not begins
+    highlightState.class = properties.class
 
-    if intersectingEndRow is range.end.row
-      intersectingRange.end.column = range.end.column
-
-    intersectingRange
+    @visibleHighlights[row] ?= {}
+    @visibleHighlights[row][column] ?= {}
+    @visibleHighlights[row][column][decorationId] = true
 
   updateHighlightState: (decoration) ->
     return unless @startRow? and @endRow? and @lineHeight? and @hasPixelPositionRequirements()
@@ -1284,95 +1295,13 @@ class TextEditorPresenter
 
     flash = decoration.consumeNextFlash()
 
-    startTile = @tileForRow(range.start.row)
-    endTile = @tileForRow(range.end.row)
+    @setHighlightState(decoration.id, range.start, flash, properties, true)
 
-    for tileStartRow in [startTile..endTile] by @tileSize
-      rangeWithinTile = @intersectRangeWithTile(range, tileStartRow)
+    for row in [range.start.row + 1..range.end.row] by 1
+      pointWithinRow = new Point(row, 0)
+      @setHighlightState(decoration.id, pointWithinRow, flash, properties, true)
 
-      continue if rangeWithinTile.isEmpty()
-
-      tileState = @state.content.tiles[tileStartRow] ?= {highlights: {}}
-      highlightState = tileState.highlights[decoration.id] ?= {
-        flashCount: 0
-        flashDuration: null
-        flashClass: null
-      }
-
-      if flash?
-        highlightState.flashCount++
-        highlightState.flashClass = flash.class
-        highlightState.flashDuration = flash.duration
-
-      highlightState.class = properties.class
-      highlightState.deprecatedRegionClass = properties.deprecatedRegionClass
-      highlightState.regions = @buildHighlightRegions(rangeWithinTile)
-
-      for region in highlightState.regions
-        @repositionRegionWithinTile(region, tileStartRow)
-
-      @visibleHighlights[tileStartRow] ?= {}
-      @visibleHighlights[tileStartRow][decoration.id] = true
-
-    true
-
-  repositionRegionWithinTile: (region, tileStartRow) ->
-    region.top  += @scrollTop - tileStartRow * @lineHeight
-    region.left += @scrollLeft
-
-  buildHighlightRegions: (screenRange) ->
-    lineHeightInPixels = @lineHeight
-    startPixelPosition = @pixelPositionForScreenPosition(screenRange.start, false)
-    endPixelPosition = @pixelPositionForScreenPosition(screenRange.end, false)
-    spannedRows = screenRange.end.row - screenRange.start.row + 1
-
-    regions = []
-
-    if spannedRows is 1
-      region =
-        top: startPixelPosition.top
-        height: lineHeightInPixels
-        left: startPixelPosition.left
-
-      if screenRange.end.column is Infinity
-        region.right = 0
-      else
-        region.width = endPixelPosition.left - startPixelPosition.left
-
-      regions.push(region)
-    else
-      # First row, extending from selection start to the right side of screen
-      regions.push(
-        top: startPixelPosition.top
-        left: startPixelPosition.left
-        height: lineHeightInPixels
-        right: 0
-      )
-
-      # Middle rows, extending from left side to right side of screen
-      if spannedRows > 2
-        regions.push(
-          top: startPixelPosition.top + lineHeightInPixels
-          height: endPixelPosition.top - startPixelPosition.top - lineHeightInPixels
-          left: 0
-          right: 0
-        )
-
-      # Last row, extending from left side of screen to selection end
-      if screenRange.end.column > 0
-        region =
-          top: endPixelPosition.top
-          height: lineHeightInPixels
-          left: 0
-
-        if screenRange.end.column is Infinity
-          region.right = 0
-        else
-          region.width = endPixelPosition.left
-
-        regions.push(region)
-
-    regions
+    @setHighlightState(decoration.id, range.end, flash, properties, false)
 
   setOverlayDimensions: (decorationId, itemWidth, itemHeight, contentMargin) ->
     @overlayDimensions[decorationId] ?= {}

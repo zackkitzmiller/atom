@@ -1360,25 +1360,27 @@ fdescribe "TextEditorPresenter", ->
             advanceClock(cursorBlinkPeriod / 2)
           expect(presenter.getState().content.cursorsVisible).toBe false
 
-      xdescribe ".highlightsByScreenRowAndColumn", ->
+      ffdescribe ".highlightsByScreenRowAndColumn", ->
+        expectUndefinedStateForHighlight = (presenter, highlight) ->
+          state = presenter.getState().content
+          for row, columns of state.highlightsByScreenRowAndColumn
+            for column, highlights of columns
+              point = [row, column]
+              highlightState = stateForHighlight(presenter, point, highlight)
+              expect(highlightState).toBeUndefined()
 
-      describe ".highlights", ->
-        expectUndefinedStateForHighlight = (presenter, decoration) ->
-          for tileId, tileState of presenter.getState().content.tiles
-            state = stateForHighlightInTile(presenter, decoration, tileId)
-            expect(state).toBeUndefined()
+        stateForHighlight = (presenter, screenPosition, highlight) ->
+          {row, column} = Point.fromObject(screenPosition)
+          state = presenter.getState().content
+          state.highlightsByScreenRowAndColumn[row]?[column]?[highlight.id]
 
-        stateForHighlightInTile = (presenter, decoration, tile) ->
-          presenter.getState().content.tiles[tile]?.highlights[decoration.id]
-
-        stateForSelectionInTile = (presenter, selectionIndex, tile) ->
+        stateForSelection = (presenter, screenPosition, selectionIndex) ->
           selection = presenter.model.getSelections()[selectionIndex]
-          stateForHighlightInTile(presenter, selection.decoration, tile)
+          stateForHighlight(presenter, screenPosition, selection.decoration)
 
         expectUndefinedStateForSelection = (presenter, selectionIndex) ->
-          for tileId, tileState of presenter.getState().content.tiles
-            state = stateForSelectionInTile(presenter, selectionIndex, tileId)
-            expect(state).toBeUndefined()
+          selection = presenter.model.getSelections()[selectionIndex]
+          expectUndefinedStateForHighlight(presenter, selection.decoration)
 
         it "contains states for highlights that are visible on screen", ->
           # off-screen above
@@ -1421,60 +1423,23 @@ fdescribe "TextEditorPresenter", ->
 
           expectUndefinedStateForHighlight(presenter, highlight1)
 
-          expectValues stateForHighlightInTile(presenter, highlight2, 2), {
-            class: 'b'
-            regions: [
-              {top: 0, left: 0 * 10, width: 6 * 10, height: 1 * 10}
-            ]
-          }
+          expectValues(stateForHighlight(presenter, [2, 0], highlight2), class: "b", begins: true)
+          expectValues(stateForHighlight(presenter, [2, 6], highlight2), class: "b", ends: true)
 
-          expectValues stateForHighlightInTile(presenter, highlight3, 2), {
-            class: 'c'
-            regions: [
-              {top: 0, left: 0 * 10, right: 0, height: 1 * 10}
-              {top: 10, left: 0 * 10, width: 6 * 10, height: 1 * 10}
-            ]
-          }
+          expectValues(stateForHighlight(presenter, [2, 0], highlight3), class: "c", begins: true)
+          expectValues(stateForHighlight(presenter, [3, 0], highlight3), class: "c", begins: true)
+          expectValues(stateForHighlight(presenter, [3, 6], highlight3), class: "c", ends: true)
 
-          expectValues stateForHighlightInTile(presenter, highlight4, 2), {
-            class: 'd'
-            regions: [
-              {top: 0, left: 6 * 10, right: 0, height: 1 * 10}
-              {top: 10, left: 0, right: 0, height: 1 * 10}
-            ]
-          }
-          expectValues stateForHighlightInTile(presenter, highlight4, 4), {
-            class: 'd'
-            regions: [
-              {top: 0, left: 0, width: 60, height: 1 * 10}
-            ]
-          }
+          expectValues(stateForHighlight(presenter, [2, 6], highlight4), class: "d", begins: true)
+          expectValues(stateForHighlight(presenter, [3, 0], highlight4), class: "d", begins: true)
+          expectValues(stateForHighlight(presenter, [4, 0], highlight4), class: "d", begins: true)
+          expectValues(stateForHighlight(presenter, [4, 6], highlight4), class: "d", ends: true)
 
-          expectValues stateForHighlightInTile(presenter, highlight5, 2), {
-            class: 'e'
-            regions: [
-              {top: 10, left: 6 * 10, right: 0, height: 1 * 10}
-            ]
-          }
+          expectValues(stateForHighlight(presenter, [3, 6], highlight5), class: "e", begins: true)
+          expectValues(stateForHighlight(presenter, [4, 0], highlight5), class: "e", begins: true)
+          expectValues(stateForHighlight(presenter, [5, 0], highlight5), class: "e", begins: true)
 
-          expectValues stateForHighlightInTile(presenter, highlight5, 4), {
-            class: 'e'
-            regions: [
-              {top: 0, left: 0, right: 0, height: 1 * 10}
-              {top: 10, left: 0, right: 0, height: 1 * 10}
-            ]
-          }
-
-          expect(stateForHighlightInTile(presenter, highlight5, 6)).toBeUndefined()
-
-          expectValues stateForHighlightInTile(presenter, highlight6, 4), {
-            class: 'f'
-            regions: [
-              {top: 10, left: 6 * 10, right: 0, height: 1 * 10}
-            ]
-          }
-
-          expect(stateForHighlightInTile(presenter, highlight6, 6)).toBeUndefined()
+          expectValues(stateForHighlight(presenter, [5, 6], highlight6), class: "f", begins: true)
 
           expectUndefinedStateForHighlight(presenter, highlight7)
           expectUndefinedStateForHighlight(presenter, highlight8)
@@ -1486,27 +1451,20 @@ fdescribe "TextEditorPresenter", ->
           ])
 
           presenter = buildPresenter(explicitHeight: null, lineHeight: null, scrollTop: null, baseCharacterWidth: null, tileSize: 2)
-          for tileId, tileState of presenter.getState().content.tiles
-            expect(tileState.highlights).toEqual({})
+
+          expect(presenter.getState().content.highlightsByScreenRowAndColumn).toEqual({})
 
           presenter.setExplicitHeight(25)
-          for tileId, tileState of presenter.getState().content.tiles
-            expect(tileState.highlights).toEqual({})
+          expect(presenter.getState().content.highlightsByScreenRowAndColumn).toEqual({})
 
           presenter.setLineHeight(10)
-          for tileId, tileState of presenter.getState().content.tiles
-            expect(tileState.highlights).toEqual({})
+          expect(presenter.getState().content.highlightsByScreenRowAndColumn).toEqual({})
 
           presenter.setScrollTop(0)
-          for tileId, tileState of presenter.getState().content.tiles
-            expect(tileState.highlights).toEqual({})
+          expect(presenter.getState().content.highlightsByScreenRowAndColumn).toEqual({})
 
           presenter.setBaseCharacterWidth(8)
-          assignedAnyHighlight = false
-          for tileId, tileState of presenter.getState().content.tiles
-            assignedAnyHighlight ||= _.isEqual(tileState.highlights, {})
-
-          expect(assignedAnyHighlight).toBe(true)
+          expect(presenter.getState().content.highlightsByScreenRowAndColumn).not.toEqual({})
 
         it "does not include highlights for invalid markers", ->
           marker = editor.markBufferRange([[2, 2], [2, 4]], invalidate: 'touch')
@@ -1514,7 +1472,8 @@ fdescribe "TextEditorPresenter", ->
 
           presenter = buildPresenter(explicitHeight: 30, scrollTop: 20, tileSize: 2)
 
-          expect(stateForHighlightInTile(presenter, highlight, 2)).toBeDefined()
+          expect(stateForHighlight(presenter, [2, 2], highlight)).toBeDefined()
+          expect(stateForHighlight(presenter, [2, 4], highlight)).toBeDefined()
 
           expectStateUpdate presenter, -> editor.getBuffer().insert([2, 2], "stuff")
 
@@ -1529,7 +1488,8 @@ fdescribe "TextEditorPresenter", ->
 
           expectUndefinedStateForSelection(presenter, 0)
           expectStateUpdate presenter, -> presenter.setScrollTop(5 * 10)
-          expect(stateForSelectionInTile(presenter, 0, 6)).toBeDefined()
+          expect(stateForSelection(presenter, [6, 2], 0)).toBeDefined()
+          expect(stateForSelection(presenter, [6, 4], 0)).toBeDefined()
           expectStateUpdate presenter, -> presenter.setScrollTop(2 * 10)
           expectUndefinedStateForSelection(presenter, 0)
 
@@ -1542,7 +1502,8 @@ fdescribe "TextEditorPresenter", ->
 
           expectUndefinedStateForSelection(presenter, 0)
           expectStateUpdate presenter, -> presenter.setExplicitHeight(60)
-          expect(stateForSelectionInTile(presenter, 0, 6)).toBeDefined()
+          expect(stateForSelection(presenter, [6, 2], 0)).toBeDefined()
+          expect(stateForSelection(presenter, [6, 4], 0)).toBeDefined()
           expectStateUpdate presenter, -> presenter.setExplicitHeight(20)
           expectUndefinedStateForSelection(presenter, 0)
 
@@ -1554,60 +1515,17 @@ fdescribe "TextEditorPresenter", ->
 
           presenter = buildPresenter(explicitHeight: 20, scrollTop: 0, tileSize: 2)
 
-          expectValues stateForSelectionInTile(presenter, 0, 2), {
-            regions: [
-              {top: 0, left: 2 * 10, width: 2 * 10, height: 10}
-            ]
-          }
+          expect(stateForSelection(presenter, [2, 2], 0)).toBeDefined()
+          expect(stateForSelection(presenter, [2, 4], 0)).toBeDefined()
           expectUndefinedStateForSelection(presenter, 1)
 
           expectStateUpdate presenter, -> presenter.setLineHeight(5)
 
-          expectValues stateForSelectionInTile(presenter, 0, 2), {
-            regions: [
-              {top: 0, left: 2 * 10, width: 2 * 10, height: 5}
-            ]
-          }
+          expect(stateForSelection(presenter, [2, 2], 0)).toBeDefined()
+          expect(stateForSelection(presenter, [2, 4], 0)).toBeDefined()
 
-          expectValues stateForSelectionInTile(presenter, 1, 2), {
-            regions: [
-              {top: 5, left: 4 * 10, width: 2 * 10, height: 5}
-            ]
-          }
-
-        it "updates when ::baseCharacterWidth changes", ->
-          editor.setSelectedBufferRanges([
-            [[2, 2], [2, 4]],
-          ])
-
-          presenter = buildPresenter(explicitHeight: 20, scrollTop: 0, tileSize: 2)
-
-          expectValues stateForSelectionInTile(presenter, 0, 2), {
-            regions: [{top: 0, left: 2 * 10, width: 2 * 10, height: 10}]
-          }
-          expectStateUpdate presenter, -> presenter.setBaseCharacterWidth(20)
-          expectValues stateForSelectionInTile(presenter, 0, 2), {
-            regions: [{top: 0, left: 2 * 20, width: 2 * 20, height: 10}]
-          }
-
-        it "updates when scoped character widths change", ->
-          waitsForPromise ->
-            atom.packages.activatePackage('language-javascript')
-
-          runs ->
-            editor.setSelectedBufferRanges([
-              [[2, 4], [2, 6]],
-            ])
-
-            presenter = buildPresenter(explicitHeight: 20, scrollTop: 0, tileSize: 2)
-
-            expectValues stateForSelectionInTile(presenter, 0, 2), {
-              regions: [{top: 0, left: 4 * 10, width: 2 * 10, height: 10}]
-            }
-            expectStateUpdate presenter, -> presenter.setScopedCharacterWidth(['source.js', 'keyword.control.js'], 'i', 20)
-            expectValues stateForSelectionInTile(presenter, 0, 2), {
-              regions: [{top: 0, left: 4 * 10, width: 20 + 10, height: 10}]
-            }
+          expect(stateForSelection(presenter, [3, 4], 1)).toBeDefined()
+          expect(stateForSelection(presenter, [3, 6], 1)).toBeDefined()
 
         it "updates when highlight decorations are added, moved, hidden, shown, or destroyed", ->
           editor.setSelectedBufferRanges([
