@@ -1365,7 +1365,7 @@ fdescribe "TextEditorPresenter", ->
           state = presenter.getState().content
           for row, columns of state.highlightsByScreenRowAndColumn
             for column, highlights of columns
-              point = [row, column]
+              point = {row, column}
               highlightState = stateForHighlight(presenter, point, highlight)
               expect(highlightState).toBeUndefined()
 
@@ -1403,7 +1403,7 @@ fdescribe "TextEditorPresenter", ->
           marker5 = editor.markBufferRange([[3, 6], [6, 6]])
           highlight5 = editor.decorateMarker(marker5, type: 'highlight', class: 'e')
 
-          # partially off-screen below, 1 of 3 regions on screen
+          # partially off-screen below, 2 of 3 regions on screen
           marker6 = editor.markBufferRange([[5, 6], [7, 6]])
           highlight6 = editor.decorateMarker(marker6, type: 'highlight', class: 'f')
 
@@ -1438,8 +1438,11 @@ fdescribe "TextEditorPresenter", ->
           expectValues(stateForHighlight(presenter, [3, 6], highlight5), class: "e", begins: true)
           expectValues(stateForHighlight(presenter, [4, 0], highlight5), class: "e", begins: true)
           expectValues(stateForHighlight(presenter, [5, 0], highlight5), class: "e", begins: true)
+          expectValues(stateForHighlight(presenter, [6, 0], highlight5), class: "e", begins: true)
+          expectValues(stateForHighlight(presenter, [6, 6], highlight5), class: "e", ends: true)
 
           expectValues(stateForHighlight(presenter, [5, 6], highlight6), class: "f", begins: true)
+          expectValues(stateForHighlight(presenter, [6, 0], highlight6), class: "f", begins: true)
 
           expectUndefinedStateForHighlight(presenter, highlight7)
           expectUndefinedStateForHighlight(presenter, highlight8)

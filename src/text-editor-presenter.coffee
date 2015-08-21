@@ -1281,15 +1281,17 @@ class TextEditorPresenter
     properties = decoration.getProperties()
     marker = decoration.getMarker()
     range = marker.getScreenRange()
+    startRow = @getStartTileRow()
+    endRow = Math.min(@model.getScreenLineCount(), @getEndTileRow() + @tileSize)
 
-    if decoration.isDestroyed() or not marker.isValid() or range.isEmpty() or not range.intersectsRowRange(@startRow, @endRow - 1)
+    if decoration.isDestroyed() or not marker.isValid() or range.isEmpty() or not range.intersectsRowRange(startRow, endRow - 1)
       return
 
-    if range.start.row < @startRow
-      range.start.row = @startRow
+    if range.start.row < startRow
+      range.start.row = startRow
       range.start.column = 0
-    if range.end.row >= @endRow
-      range.end.row = @endRow
+    if range.end.row >= endRow
+      range.end.row = endRow
       range.end.column = 0
 
     return if range.isEmpty()
