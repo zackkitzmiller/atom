@@ -119,8 +119,3 @@ unless process.env.ATOM_SHELL_INTERNAL_RUN_AS_NODE
         Add `"atom-space-pen-views": "^2.0.3"` to your package dependencies.
       """
       require '../src/select-list-view'
-
-if includeDeprecatedAPIs
-  Object.defineProperty module.exports, 'Git', get: ->
-    deprecate "Please require `GitRepository` instead of `Git`: `{GitRepository} = require 'atom'`"
-    module.exports.GitRepository
