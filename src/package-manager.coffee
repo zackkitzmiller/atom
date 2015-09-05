@@ -4,7 +4,6 @@ _ = require 'underscore-plus'
 {Emitter} = require 'event-kit'
 fs = require 'fs-plus'
 Q = require 'q'
-Grim = require 'grim'
 
 ServiceHub = require 'service-hub'
 Package = require './package'
@@ -332,7 +331,6 @@ class PackageManager
     packagePaths = packagePaths.filter (packagePath) => not @isPackageDisabled(path.basename(packagePath))
     packagePaths = _.uniq packagePaths, (packagePath) -> path.basename(packagePath)
     @loadPackage(packagePath) for packagePath in packagePaths
-    @emit 'loaded' if Grim.includeDeprecatedAPIs
     @emitter.emit 'did-load-initial-packages'
 
   loadPackage: (nameOrPath) ->
@@ -348,7 +346,7 @@ class PackageManager
         @handleMetadataError(error, packagePath)
         return null
 
-      unless @isBundledPackage(metadata.name) or Grim.includeDeprecatedAPIs
+      unless @isBundledPackage(metadata.name)
         if @isDeprecatedPackage(metadata.name, metadata.version)
           console.warn "Could not load #{metadata.name}@#{metadata.version} because it uses deprecated APIs that have been removed."
           return null
@@ -386,7 +384,6 @@ class PackageManager
       packages = @getLoadedPackagesForTypes(types)
       promises = promises.concat(activator.activatePackages(packages))
     Q.all(promises).then =>
-      @emit 'activated' if Grim.includeDeprecatedAPIs
       @emitter.emit 'did-activate-initial-packages'
 
   # another type of package manager can handle other package types.
@@ -460,25 +457,3 @@ class PackageManager
       [isSymLink, isDir] = values
       if not isSymLink and isDir
         fs.remove directory, ->
-
-if Grim.includeDeprecatedAPIs
-  EmitterMixin = require('emissary').Emitter
-  EmitterMixin.includeInto(PackageManager)
-
-  PackageManager::on = (eventName) ->
-    switch eventName
-      when 'loaded'
-        Grim.deprecate 'Use PackageManager::onDidLoadInitialPackages instead'
-      when 'activated'
-        Grim.deprecate 'Use PackageManager::onDidActivateInitialPackages instead'
-      else
-        Grim.deprecate 'PackageManager::on is deprecated. Use event subscription methods instead.'
-    EmitterMixin::on.apply(this, arguments)
-
-  PackageManager::onDidLoadAll = (callback) ->
-    Grim.deprecate("Use `::onDidLoadInitialPackages` instead.")
-    @onDidLoadInitialPackages(callback)
-
-  PackageManager::onDidActivateAll = (callback) ->
-    Grim.deprecate("Use `::onDidActivateInitialPackages` instead.")
-    @onDidActivateInitialPackages(callback)
