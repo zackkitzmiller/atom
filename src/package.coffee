@@ -7,7 +7,6 @@ CSON = require 'season'
 fs = require 'fs-plus'
 {Emitter, CompositeDisposable} = require 'event-kit'
 Q = require 'q'
-{includeDeprecatedAPIs, deprecate} = require 'grim'
 
 ModuleCache = require './module-cache'
 ScopedProperties = require './scoped-properties'
@@ -47,14 +46,6 @@ class Package
     metadata ?= {}
     unless typeof metadata.name is 'string' and metadata.name.length > 0
       metadata.name = packageName
-
-    if includeDeprecatedAPIs and metadata.stylesheetMain?
-      deprecate("Use the `mainStyleSheet` key instead of `stylesheetMain` in the `package.json` of `#{packageName}`", {packageName})
-      metadata.mainStyleSheet = metadata.stylesheetMain
-
-    if includeDeprecatedAPIs and metadata.stylesheets?
-      deprecate("Use the `styleSheets` key instead of `stylesheets` in the `package.json` of `#{packageName}`", {packageName})
-      metadata.styleSheets = metadata.stylesheets
 
     metadata
 
@@ -173,11 +164,6 @@ class Package
     if @mainModule?
       if @mainModule.config? and typeof @mainModule.config is 'object'
         atom.config.setSchema @name, {type: 'object', properties: @mainModule.config}
-      else if @mainModule.configDefaults? and typeof @mainModule.configDefaults is 'object'
-        deprecate("""Use a config schema instead. See the configuration section
-        of https://atom.io/docs/latest/hacking-atom-package-word-count and
-        https://atom.io/docs/api/latest/Config for more details""", {packageName: @name})
-        atom.config.setDefaults(@name, @mainModule.configDefaults)
       @mainModule.activateConfig?()
     @configActivated = true
 
@@ -210,17 +196,6 @@ class Package
     for [menuPath, map] in @menus when map['context-menu']?
       try
         itemsBySelector = map['context-menu']
-
-        # Detect deprecated format for items object
-        for key, value of itemsBySelector
-          unless _.isArray(value)
-            deprecate("""
-              The context menu CSON format has changed. Please see
-              https://atom.io/docs/api/latest/ContextMenuManager#context-menu-cson-format
-              for more info.
-            """, {packageName: @name})
-            itemsBySelector = atom.contextMenu.convertLegacyItemsBySelector(itemsBySelector)
-
         @activationDisposables.add(atom.contextMenu.add(itemsBySelector))
       catch error
         if error.code is 'EBADSELECTOR'
@@ -308,11 +283,7 @@ class Package
       [stylesheetPath, atom.themes.loadStylesheet(stylesheetPath, true)]
 
   getStylesheetsPath: ->
-    if fs.isDirectorySync(path.join(@path, 'stylesheets'))
-      deprecate("Store package style sheets in the `styles/` directory instead of `stylesheets/` in the `#{@name}` package", packageName: @name)
-      path.join(@path, 'stylesheets')
-    else
-      path.join(@path, 'styles')
+    path.join(@path, 'styles')
 
   getStylesheetPaths: ->
     stylesheetDirPath = @getStylesheetsPath()
@@ -383,13 +354,7 @@ class Package
         callback()
 
     deferred = Q.defer()
-
-    if fs.isDirectorySync(path.join(@path, 'scoped-properties'))
-      settingsDirPath = path.join(@path, 'scoped-properties')
-      deprecate("Store package settings files in the `settings/` directory instead of `scoped-properties/`", packageName: @name)
-    else
-      settingsDirPath = path.join(@path, 'settings')
-
+    settingsDirPath = path.join(@path, 'settings')
     fs.exists settingsDirPath, (settingsDirExists) ->
       return deferred.resolve() unless settingsDirExists
 
@@ -417,7 +382,6 @@ class Package
         @mainActivated = false
       catch e
         console.error "Error deactivating package '#{@name}'", e.stack
-    @emit 'deactivated' if includeDeprecatedAPIs
     @emitter.emit 'did-deactivate'
 
   deactivateConfig: ->
@@ -533,31 +497,6 @@ class Package
         else if _.isArray(commands)
           @activationCommands[selector].push(commands...)
 
-    if @metadata.activationEvents?
-      deprecate("""
-        Use `activationCommands` instead of `activationEvents` in your package.json
-        Commands should be grouped by selector as follows:
-        ```json
-          "activationCommands": {
-            "atom-workspace": ["foo:bar", "foo:baz"],
-            "atom-text-editor": ["foo:quux"]
-          }
-        ```
-      """, {packageName: @name})
-      if _.isArray(@metadata.activationEvents)
-        for eventName in @metadata.activationEvents
-          @activationCommands['atom-workspace'] ?= []
-          @activationCommands['atom-workspace'].push(eventName)
-      else if _.isString(@metadata.activationEvents)
-        eventName = @metadata.activationEvents
-        @activationCommands['atom-workspace'] ?= []
-        @activationCommands['atom-workspace'].push(eventName)
-      else
-        for eventName, selector of @metadata.activationEvents
-          selector ?= 'atom-workspace'
-          @activationCommands[selector] ?= []
-          @activationCommands[selector].push(eventName)
-
     @activationCommands
 
   subscribeToActivationHooks: ->
@@ -672,15 +611,3 @@ class Package
       stack = error.stack ? error
 
     atom.notifications.addFatalError(message, {stack, detail, dismissable: true})
-
-if includeDeprecatedAPIs
-  EmitterMixin = require('emissary').Emitter
-  EmitterMixin.includeInto(Package)
-
-  Package::on = (eventName) ->
-    switch eventName
-      when 'deactivated'
-        deprecate 'Use Package::onDidDeactivate instead'
-      else
-        deprecate 'Package::on is deprecated. Use event subscription methods instead.'
-    EmitterMixin::on.apply(this, arguments)
