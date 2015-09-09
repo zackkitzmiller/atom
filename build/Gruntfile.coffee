@@ -96,7 +96,6 @@ module.exports = (grunt) ->
   prebuildLessConfig =
     src: [
       'static/**/*.less'
-      'node_modules/atom-space-pen-views/stylesheets/**/*.less'
     ]
 
   csonConfig =
